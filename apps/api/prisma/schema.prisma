@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WeekDay {
+  segunda
+  terca
+  quarta
+  quinta
+  sexta
+  sabado
+  domingo
+}
+
+enum PlanGoal {
+  emagrecer
+  manter
+  ganhar
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  googleId  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mealPlans MealPlan[]
+
+  @@map("users")
+}
+
+model Food {
+  id       String  @id @default(uuid())
+  name     String
+  calories Float
+  protein  Float
+  carbs    Float
+  fat      Float
+  portion  String  @default("100g")
+
+  mealFoods MealFood[]
+
+  @@map("foods")
+}
+
+model MealPlan {
+  id             String   @id @default(uuid())
+  name           String
+  goal           PlanGoal
+  dailyCalories  Int
+  dailyProtein   Int?
+  dailyCarbs     Int?
+  dailyFat       Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  days DayPlan[]
+
+  @@map("meal_plans")
+}
+
+model DayPlan {
+  id  String  @id @default(uuid())
+  day WeekDay
+
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  meals Meal[]
+
+  @@unique([mealPlanId, day])
+  @@map("day_plans")
+}
+
+model Meal {
+  id   String  @id @default(uuid())
+  name String
+  time String?
+
+  dayPlanId String
+  dayPlan   DayPlan @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
+
+  foods MealFood[]
+
+  @@map("meals")
+}
+
+model MealFood {
+  id       String @id @default(uuid())
+  quantity Float  @default(100)
+
+  mealId String
+  meal   Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  foodId String
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@unique([mealId, foodId])
+  @@map("meal_foods")
+}

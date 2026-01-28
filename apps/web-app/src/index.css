@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 45 40% 98%;
+    --foreground: 35 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 35 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 35 30% 15%;
+
+    --primary: 45 90% 50%;
+    --primary-foreground: 35 40% 15%;
+
+    --secondary: 45 50% 94%;
+    --secondary-foreground: 35 30% 20%;
+
+    --muted: 45 30% 92%;
+    --muted-foreground: 35 20% 45%;
+
+    --accent: 25 95% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 45 25% 88%;
+    --input: 45 25% 88%;
+    --ring: 45 90% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --success: 145 60% 45%;
+    --warning: 25 95% 55%;
+    --info: 200 80% 50%;
+    
+    --protein: 340 75% 55%;
+    --carbs: 45 90% 50%;
+    --fat: 200 80% 50%;
+    
+    --gradient-primary: linear-gradient(135deg, hsl(45 90% 50%) 0%, hsl(35 85% 45%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(25 95% 55%) 0%, hsl(40 90% 50%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(45 40% 98%) 100%);
+    
+    --shadow-sm: 0 1px 2px hsl(35 30% 15% / 0.05);
+    --shadow-md: 0 4px 12px hsl(35 30% 15% / 0.08);
+    --shadow-lg: 0 8px 24px hsl(35 30% 15% / 0.12);
+    --shadow-glow: 0 0 20px hsl(45 90% 50% / 0.35);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 35 30% 25%;
+    --sidebar-primary: 45 90% 50%;
+    --sidebar-primary-foreground: 35 40% 15%;
+    --sidebar-accent: 45 40% 96%;
+    --sidebar-accent-foreground: 35 30% 20%;
+    --sidebar-border: 45 25% 90%;
+    --sidebar-ring: 45 90% 50%;
+  }
+
+  .dark {
+    --background: 35 20% 8%;
+    --foreground: 45 40% 95%;
+
+    --card: 35 18% 12%;
+    --card-foreground: 45 40% 95%;
+
+    --popover: 35 18% 12%;
+    --popover-foreground: 45 40% 95%;
+
+    --primary: 45 90% 55%;
+    --primary-foreground: 35 40% 10%;
+
+    --secondary: 35 15% 18%;
+    --secondary-foreground: 45 40% 90%;
+
+    --muted: 35 15% 20%;
+    --muted-foreground: 45 20% 60%;
+
+    --accent: 25 90% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 35 15% 20%;
+    --input: 35 15% 20%;
+    --ring: 45 90% 55%;
+
+    --sidebar-background: 35 18% 10%;
+    --sidebar-foreground: 45 40% 90%;
+    --sidebar-primary: 45 90% 55%;
+    --sidebar-primary-foreground: 35 40% 10%;
+    --sidebar-accent: 35 15% 15%;
+    --sidebar-accent-foreground: 45 40% 90%;
+    --sidebar-border: 35 15% 18%;
+    --sidebar-ring: 45 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Nunito', system-ui, sans-serif;
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+}

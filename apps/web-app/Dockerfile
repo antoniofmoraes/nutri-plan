@@ -9,10 +9,9 @@ ENV VITE_API_URL=$VITE_API_URL
 
 # Copy package files
 COPY package*.json ./
-COPY bun.lockb ./
 
-# Install dependencies
-RUN npm ci
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci --include=dev
 
 # Copy source code
 COPY . .

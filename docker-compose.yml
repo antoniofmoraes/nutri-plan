@@ -14,39 +14,26 @@ services:
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
-    ports:
-      - "3000:3000"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - nutriplan-network
 
   web:
     build:
       context: ./apps/web-app
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_API_URL: ${VITE_API_URL}
     container_name: nutriplan-web
     restart: unless-stopped
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
-    ports:
-      - "8081:80"
+      VITE_API_URL: ${VITE_API_URL}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - nutriplan-network
     depends_on:
       - api
-    
-
-networks:
-  nutriplan-network:
-    driver: bridge

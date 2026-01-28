@@ -35,11 +35,11 @@ services:
       context: ./apps/web-app
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_API_URL: ${VITE_API_URL:-/api}
     container_name: nutriplan-web
     restart: unless-stopped
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      VITE_API_URL: ${VITE_API_URL:-/api}
     ports:
       - "8081:80"
     depends_on:

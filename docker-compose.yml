@@ -30,7 +30,7 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     ports:
-      - "8080:80"
+      - "8081:80"
     networks:
       - nutriplan-network
     depends_on:

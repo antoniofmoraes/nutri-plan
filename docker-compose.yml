@@ -14,22 +14,39 @@ services:
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - "3000:3000"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - default
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nutriplan-api.rule=Host(`${API_DOMAIN:-api.localhost}`)"
+      - "traefik.http.routers.nutriplan-api.entrypoints=http"
+      - "traefik.http.routers.nutriplan-api-secure.rule=Host(`${API_DOMAIN:-api.localhost}`)"
+      - "traefik.http.routers.nutriplan-api-secure.entrypoints=https"
+      - "traefik.http.routers.nutriplan-api-secure.tls=true"
+      - "traefik.http.routers.nutriplan-api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nutriplan-api.loadbalancer.server.port=3000"
+      - "traefik.docker.network=coolify"
 
   web:
     build:
       context: ./apps/web-app
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     container_name: nutriplan-web
     restart: unless-stopped
     environment:
-      VITE_API_URL: ${VITE_API_URL}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    ports:
+      - "8080:80"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
@@ -37,3 +54,22 @@ services:
       retries: 3
     depends_on:
       - api
+    networks:
+      - default
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nutriplan-web.rule=Host(`${WEB_DOMAIN:-app.localhost}`)"
+      - "traefik.http.routers.nutriplan-web.entrypoints=http"
+      - "traefik.http.routers.nutriplan-web-secure.rule=Host(`${WEB_DOMAIN:-app.localhost}`)"
+      - "traefik.http.routers.nutriplan-web-secure.entrypoints=https"
+      - "traefik.http.routers.nutriplan-web-secure.tls=true"
+      - "traefik.http.routers.nutriplan-web-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nutriplan-web.loadbalancer.server.port=80"
+      - "traefik.docker.network=coolify"
+
+networks:
+  default:
+    driver: bridge
+  coolify:
+    external: true

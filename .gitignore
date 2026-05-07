@@ -61,6 +61,13 @@ coverage/
 prisma/*.db
 prisma/*.db-journal
 
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
 # Docker
 .docker/
 

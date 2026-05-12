@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Apple, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, error, clearError } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,17 +28,24 @@ export default function Register() {
           description: 'Bem-vindo ao NutriPlan.',
         });
         navigate('/');
-      } else {
-        toast({
-          title: 'Erro no cadastro',
-          description: 'Verifique os dados informados.',
-          variant: 'destructive',
-        });
       }
+    } catch (err) {
+      // error already captured by AuthContext
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Erro no cadastro',
+        description: error,
+        variant: 'destructive',
+      });
+      clearError();
+    }
+  }, [error, toast, clearError]);
 
   return (
     <div className="min-h-screen flex">

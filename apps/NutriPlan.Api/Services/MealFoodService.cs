@@ -98,5 +98,5 @@ public class MealFoodService(AppDbContext db)
 
     private static MealFoodResponse ToResponse(MealFood mf) =>
         new(mf.Id, mf.Quantity,
-            new FoodResponse(mf.Food.Id, mf.Food.Name, mf.Food.Calories, mf.Food.Protein, mf.Food.Carbs, mf.Food.Fat, mf.Food.Portion));
+            new FoodResponse(mf.Food.Id, mf.Food.Name, mf.Food.Calories, mf.Food.Protein, mf.Food.Carbs, mf.Food.Fat, mf.Food.Fibers, mf.Food.Portion));
 }

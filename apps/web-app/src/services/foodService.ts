@@ -7,6 +7,7 @@ interface CreateFoodInput {
   protein: number;
   carbs: number;
   fat: number;
+  fibers: number;
   portion?: string;
 }
 
@@ -16,13 +17,26 @@ interface UpdateFoodInput {
   protein?: number;
   carbs?: number;
   fat?: number;
+  fibers?: number;
   portion?: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
 export const foodService = {
-  async getAll(search?: string): Promise<Food[]> {
-    const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return api.get<Food[]>(`/api/foods${query}`);
+  async getAll(params?: { search?: string; page?: number; pageSize?: number }): Promise<PaginatedResponse<Food>> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Food>>(`/api/foods${query ? `?${query}` : ''}`);
   },
 
   async getById(id: string): Promise<Food> {

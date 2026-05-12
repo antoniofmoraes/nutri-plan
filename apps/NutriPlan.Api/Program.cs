@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,10 +13,26 @@ var builder = WebApplication.CreateBuilder(args);
 // Configuration: env vars override appsettings
 builder.Configuration.AddEnvironmentVariables();
 
-// Database
-var connectionString = builder.Configuration["DATABASE_URL"]
+// Database — Npgsql requires key-value format, not postgresql:// URIs
+var databaseUrl = builder.Configuration["DATABASE_URL"]
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("DATABASE_URL is required");
+
+var connectionString = databaseUrl;
+var dbMatch = Regex.Match(databaseUrl, @"^postgres(?:ql)?://([^:]+):(.+)@([^:/@]+):(\d+)/(.+)$");
+if (dbMatch.Success)
+{
+    // Resolve hostname to IPv4 to avoid Docker IPv6 routing issues
+    var host = dbMatch.Groups[3].Value;
+    try
+    {
+        var ipv4Addresses = System.Net.Dns.GetHostAddresses(host, System.Net.Sockets.AddressFamily.InterNetwork);
+        if (ipv4Addresses.Length > 0)
+            host = ipv4Addresses[0].ToString();
+    }
+    catch { /* fallback to original hostname */ }
+    connectionString = $"Host={host};Port={dbMatch.Groups[4].Value};Database={dbMatch.Groups[5].Value};Username={dbMatch.Groups[1].Value};Password={dbMatch.Groups[2].Value};SSL Mode=Require;Trust Server Certificate=true";
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -149,8 +166,8 @@ users.MapDelete("/me", async (HttpContext ctx, UserService svc) =>
 // ─── Foods ────────────────────────────────────────────────
 var foods = app.MapGroup("/api/foods").RequireAuthorization();
 
-foods.MapGet("/", async (string? search, FoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.GetAllAsync(search))));
+foods.MapGet("/", async (string? search, int? page, int? pageSize, FoodService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetAllAsync(search, page ?? 1, pageSize ?? 50))));
 
 foods.MapGet("/{id:guid}", async (Guid id, FoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id))));

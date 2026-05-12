@@ -67,6 +67,7 @@ obj/
 *.user
 *.suo
 .vs/
+appsettings.Development.json
 
 # Docker
 .docker/

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Edit, Trash2, Search, Apple } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Plus, Edit, Trash2, Search, Apple, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -8,10 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useMealPlan } from '@/contexts/MealPlanContext';
 import { Food } from '@/types';
+import { foodService } from '@/services/foodService';
+
+const PAGE_SIZE = 50;
 
 export default function Foods() {
-  const { foods, addFood, updateFood, deleteFood } = useMealPlan();
+  const { addFood, updateFood, deleteFood } = useMealPlan();
+  const [foods, setFoods] = useState<Food[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [total, setTotal] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFood, setEditingFood] = useState<Food | null>(null);
   const [formData, setFormData] = useState({
@@ -20,16 +28,55 @@ export default function Foods() {
     protein: '',
     carbs: '',
     fat: '',
+    fibers: '',
     portion: '',
   });
 
-  const filteredFoods = foods.filter((food) =>
-    food.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const fetchFoods = useCallback(async (pageNum: number, search: string, reset: boolean) => {
+    setIsLoading(true);
+    try {
+      const result = await foodService.getAll({ search: search || undefined, page: pageNum, pageSize: PAGE_SIZE });
+      setFoods(prev => reset ? result.items : [...prev, ...result.items]);
+      setHasMore(result.hasMore);
+      setTotal(result.total);
+      setPage(pageNum);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFoods(1, searchQuery, true);
+  }, []);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchFoods(1, searchQuery, true);
+    }, 300);
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [searchQuery, fetchFoods]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          fetchFoods(page + 1, searchQuery, false);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    const el = loaderRef.current;
+    if (el) observer.observe(el);
+    return () => { if (el) observer.unobserve(el); };
+  }, [hasMore, isLoading, page, searchQuery, fetchFoods]);
 
   const handleOpenCreate = () => {
     setEditingFood(null);
-    setFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', portion: '100g' });
+    setFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', fibers: '', portion: '100g' });
     setDialogOpen(true);
   };
 
@@ -41,12 +88,13 @@ export default function Foods() {
       protein: food.protein.toString(),
       carbs: food.carbs.toString(),
       fat: food.fat.toString(),
+      fibers: food.fibers.toString(),
       portion: food.portion || '100g',
     });
     setDialogOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name.trim()) return;
 
     const foodData = {
@@ -55,19 +103,23 @@ export default function Foods() {
       protein: Number(formData.protein) || 0,
       carbs: Number(formData.carbs) || 0,
       fat: Number(formData.fat) || 0,
+      fibers: Number(formData.fibers) || 0,
       portion: formData.portion || '100g',
     };
 
     if (editingFood) {
-      updateFood(editingFood.id, foodData);
+      await updateFood(editingFood.id, foodData);
     } else {
-      addFood(foodData);
+      await addFood(foodData);
     }
     setDialogOpen(false);
+    fetchFoods(1, searchQuery, true);
   };
 
-  const handleDelete = (id: string) => {
-    deleteFood(id);
+  const handleDelete = async (id: string) => {
+    await deleteFood(id);
+    setFoods(prev => prev.filter(f => f.id !== id));
+    setTotal(prev => prev - 1);
   };
 
   return (
@@ -78,7 +130,7 @@ export default function Foods() {
             Alimentos
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Gerencie sua base de alimentos
+            {total > 0 ? `${total} alimentos cadastrados` : 'Gerencie sua base de alimentos'}
           </p>
         </div>
 
@@ -100,7 +152,7 @@ export default function Foods() {
       </div>
 
       {/* Foods Table */}
-      {filteredFoods.length === 0 ? (
+      {foods.length === 0 && !isLoading ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
@@ -127,12 +179,13 @@ export default function Foods() {
                   <TableHead className="text-right">Proteína</TableHead>
                   <TableHead className="text-right">Carbos</TableHead>
                   <TableHead className="text-right">Gordura</TableHead>
+                  <TableHead className="text-right">Fibras</TableHead>
                   <TableHead className="text-right">Porção</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredFoods.map((food) => (
+                {foods.map((food) => (
                   <TableRow key={food.id}>
                     <TableCell className="font-medium">{food.name}</TableCell>
                     <TableCell className="text-right text-accent font-medium">
@@ -146,6 +199,9 @@ export default function Foods() {
                     </TableCell>
                     <TableCell className="text-right text-fat">
                       {food.fat}g
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {food.fibers}g
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {food.portion}
@@ -173,6 +229,18 @@ export default function Foods() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Infinite scroll trigger */}
+          <div ref={loaderRef} className="flex justify-center py-4">
+            {isLoading && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+            {!hasMore && foods.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Todos os {total} alimentos carregados
+              </p>
+            )}
           </div>
         </Card>
       )}
@@ -213,7 +281,7 @@ export default function Foods() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Proteína (g)</Label>
                 <Input
@@ -239,6 +307,15 @@ export default function Foods() {
                   placeholder="0"
                   value={formData.fat}
                   onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fibras (g)</Label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.fibers}
+                  onChange={(e) => setFormData({ ...formData, fibers: e.target.value })}
                 />
               </div>
             </div>

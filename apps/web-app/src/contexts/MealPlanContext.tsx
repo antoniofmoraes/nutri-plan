@@ -44,12 +44,12 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const [plansData, foodsData] = await Promise.all([
+      const [plansData, foodsPage] = await Promise.all([
         mealPlanService.getAll(),
-        foodService.getAll(),
+        foodService.getAll({ pageSize: 10000 }),
       ]);
       setMealPlans(plansData);
-      setFoods(foodsData);
+      setFoods(foodsPage.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
     } finally {

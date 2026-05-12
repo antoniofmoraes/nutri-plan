@@ -103,6 +103,6 @@ public class MealService(AppDbContext db)
     private static MealResponse ToMealResponse(Meal m) =>
         new(m.Id, m.Name, m.Time, m.Foods.Select(mf =>
             new MealFoodResponse(mf.Id, mf.Quantity,
-                new FoodResponse(mf.Food.Id, mf.Food.Name, mf.Food.Calories, mf.Food.Protein, mf.Food.Carbs, mf.Food.Fat, mf.Food.Portion)
+                new FoodResponse(mf.Food.Id, mf.Food.Name, mf.Food.Calories, mf.Food.Protein, mf.Food.Carbs, mf.Food.Fat, mf.Food.Fibers, mf.Food.Portion)
             )).ToList());
 }

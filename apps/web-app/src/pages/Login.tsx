@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Apple, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, error, clearError } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -27,17 +27,25 @@ export default function Login() {
           description: 'Login realizado com sucesso.',
         });
         navigate('/');
-      } else {
-        toast({
-          title: 'Erro no login',
-          description: 'Verifique suas credenciais.',
-          variant: 'destructive',
-        });
       }
+    } catch (err) {
+      // error already captured by AuthContext
     } finally {
       setLoading(false);
     }
   };
+
+  // Show toast when auth error changes
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Erro no login',
+        description: error,
+        variant: 'destructive',
+      });
+      clearError();
+    }
+  }, [error, toast, clearError]);
 
   return (
     <div className="min-h-screen flex">

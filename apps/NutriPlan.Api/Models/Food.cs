@@ -25,6 +25,9 @@ public class Food
     [Column("fat")]
     public double Fat { get; set; }
 
+    [Column("fibers")]
+    public double Fibers { get; set; }
+
     [Column("portion")]
     public string Portion { get; set; } = "100g";
 

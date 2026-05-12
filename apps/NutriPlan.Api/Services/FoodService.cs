@@ -8,15 +8,26 @@ namespace NutriPlan.Api.Services;
 
 public class FoodService(AppDbContext db)
 {
-    public async Task<List<FoodResponse>> GetAllAsync(string? search)
+    public async Task<PaginatedResponse<FoodResponse>> GetAllAsync(string? search, int page = 1, int pageSize = 50)
     {
         var query = db.Foods.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(f => EF.Functions.ILike(f.Name, $"%{search}%"));
 
-        var foods = await query.OrderBy(f => f.Name).ToListAsync();
-        return foods.Select(ToResponse).ToList();
+        var total = await query.CountAsync();
+        var foods = await query.OrderBy(f => f.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PaginatedResponse<FoodResponse>(
+            foods.Select(ToResponse).ToList(),
+            total,
+            page,
+            pageSize,
+            page * pageSize < total
+        );
     }
 
     public async Task<FoodResponse> GetByIdAsync(Guid id)
@@ -37,6 +48,7 @@ public class FoodService(AppDbContext db)
             Protein = request.Protein,
             Carbs = request.Carbs,
             Fat = request.Fat,
+            Fibers = request.Fibers,
             Portion = request.Portion
         };
 
@@ -56,6 +68,7 @@ public class FoodService(AppDbContext db)
         if (request.Protein.HasValue) food.Protein = request.Protein.Value;
         if (request.Carbs.HasValue) food.Carbs = request.Carbs.Value;
         if (request.Fat.HasValue) food.Fat = request.Fat.Value;
+        if (request.Fibers.HasValue) food.Fibers = request.Fibers.Value;
         if (request.Portion is not null) food.Portion = request.Portion;
 
         await db.SaveChangesAsync();
@@ -73,5 +86,5 @@ public class FoodService(AppDbContext db)
     }
 
     private static FoodResponse ToResponse(Food f) =>
-        new(f.Id, f.Name, f.Calories, f.Protein, f.Carbs, f.Fat, f.Portion);
+        new(f.Id, f.Name, f.Calories, f.Protein, f.Carbs, f.Fat, f.Fibers, f.Portion);
 }

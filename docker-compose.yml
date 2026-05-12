@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build:
@@ -10,25 +8,11 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
       PORT: "3000"
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      CORS_ORIGIN: ${CORS_ORIGIN:-*}
     ports:
       - "3000:3000"
-    networks:
-      - default
-      - coolify
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nutriplan-api.rule=Host(`${API_DOMAIN:-api.localhost}`)"
-      - "traefik.http.routers.nutriplan-api.entrypoints=http"
-      - "traefik.http.routers.nutriplan-api-secure.rule=Host(`${API_DOMAIN:-api.localhost}`)"
-      - "traefik.http.routers.nutriplan-api-secure.entrypoints=https"
-      - "traefik.http.routers.nutriplan-api-secure.tls=true"
-      - "traefik.http.routers.nutriplan-api-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.services.nutriplan-api.loadbalancer.server.port=3000"
-      - "traefik.docker.network=coolify"
 
   web:
     build:
@@ -38,28 +22,7 @@ services:
         VITE_API_URL: ${VITE_API_URL:-/api}
     container_name: nutriplan-web
     restart: unless-stopped
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-/api}
     ports:
-      - "8081:80"
+      - "8080:80"
     depends_on:
       - api
-    networks:
-      - default
-      - coolify
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nutriplan-web.rule=Host(`${WEB_DOMAIN:-app.localhost}`)"
-      - "traefik.http.routers.nutriplan-web.entrypoints=http"
-      - "traefik.http.routers.nutriplan-web-secure.rule=Host(`${WEB_DOMAIN:-app.localhost}`)"
-      - "traefik.http.routers.nutriplan-web-secure.entrypoints=https"
-      - "traefik.http.routers.nutriplan-web-secure.tls=true"
-      - "traefik.http.routers.nutriplan-web-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.services.nutriplan-web.loadbalancer.server.port=80"
-      - "traefik.docker.network=coolify"
-
-networks:
-  default:
-    driver: bridge
-  coolify:
-    external: true

@@ -130,7 +130,7 @@ export default function Foods() {
             Alimentos
           </h1>
           <p className="mt-1 text-muted-foreground">
-            {total > 0 ? `${total} alimentos cadastrados` : 'Gerencie sua base de alimentos'}
+            Gerencie sua base de alimentos
           </p>
         </div>
 

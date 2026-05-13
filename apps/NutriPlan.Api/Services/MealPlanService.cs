@@ -8,7 +8,7 @@ namespace NutriPlan.Api.Services;
 
 public class MealPlanService(AppDbContext db)
 {
-    private static readonly string[] WeekDays = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"];
+    public static readonly string[] WeekDays = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"];
 
     public async Task<List<MealPlanResponse>> GetAllByUserAsync(Guid userId)
     {
@@ -85,13 +85,19 @@ public class MealPlanService(AppDbContext db)
 
     private IQueryable<MealPlan> GetPlansQuery() =>
         db.MealPlans
-            .Include(mp => mp.Days.OrderBy(d => d.Day))
+            .Include(mp => mp.Slots.OrderBy(s => s.SortOrder))
+            .Include(mp => mp.Days)
+                .ThenInclude(d => d.Meals)
+                    .ThenInclude(m => m.MealSlot)
+            .Include(mp => mp.Days)
                 .ThenInclude(d => d.Meals)
                     .ThenInclude(m => m.Foods)
                         .ThenInclude(mf => mf.Food);
 
-    public static MealPlanResponse ToResponse(MealPlan plan) =>
-        new(
+    public static MealPlanResponse ToResponse(MealPlan plan)
+    {
+        var orderedDays = plan.Days.OrderBy(d => Array.IndexOf(WeekDays, d.Day)).ToList();
+        return new MealPlanResponse(
             plan.Id,
             plan.Name,
             plan.Goal,
@@ -99,12 +105,14 @@ public class MealPlanService(AppDbContext db)
             plan.DailyProtein,
             plan.DailyCarbs,
             plan.DailyFat,
-            plan.Days.Select(d => new DayPlanResponse(
+            plan.Slots.OrderBy(s => s.SortOrder).Select(s => new MealSlotResponse(s.Id, s.Name, s.Time, s.SortOrder)).ToList(),
+            orderedDays.Select(d => new DayPlanResponse(
                 d.Day,
-                d.Meals.Select(m => new MealResponse(
+                d.Meals.OrderBy(m => m.MealSlot.SortOrder).Select(m => new MealResponse(
                     m.Id,
-                    m.Name,
-                    m.Time,
+                    m.MealSlotId,
+                    m.MealSlot.Name,
+                    m.MealSlot.Time,
                     m.Foods.Select(mf => new MealFoodResponse(
                         mf.Id,
                         mf.Quantity,
@@ -115,4 +123,5 @@ public class MealPlanService(AppDbContext db)
             plan.CreatedAt,
             plan.UpdatedAt
         );
+    }
 }

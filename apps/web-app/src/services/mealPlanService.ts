@@ -1,7 +1,6 @@
 import { api } from '@/lib/api';
-import { MealPlan, Meal, WeekDay, Food } from '@/types';
+import { MealPlan, MealSlot, WeekDay, Food } from '@/types';
 
-// API response types (backend format)
 interface ApiMealFood {
   id: string;
   quantity: number;
@@ -10,13 +9,20 @@ interface ApiMealFood {
 
 interface ApiMeal {
   id: string;
+  slotId: string;
   name: string;
   time?: string;
   foods: ApiMealFood[];
 }
 
-interface ApiDayPlan {
+interface ApiMealSlot {
   id: string;
+  name: string;
+  time?: string;
+  sortOrder: number;
+}
+
+interface ApiDayPlan {
   day: WeekDay;
   meals: ApiMeal[];
 }
@@ -29,12 +35,12 @@ interface ApiMealPlan {
   dailyProtein?: number | null;
   dailyCarbs?: number | null;
   dailyFat?: number | null;
+  slots: ApiMealSlot[];
   days: ApiDayPlan[];
   createdAt: string;
   updatedAt: string;
 }
 
-// Transform API response to frontend format
 function transformMealPlan(apiPlan: ApiMealPlan): MealPlan {
   return {
     id: apiPlan.id,
@@ -44,13 +50,16 @@ function transformMealPlan(apiPlan: ApiMealPlan): MealPlan {
     dailyProtein: apiPlan.dailyProtein,
     dailyCarbs: apiPlan.dailyCarbs,
     dailyFat: apiPlan.dailyFat,
+    slots: apiPlan.slots,
     days: apiPlan.days.map((day) => ({
       day: day.day,
       meals: day.meals.map((meal) => ({
         id: meal.id,
+        slotId: meal.slotId,
         name: meal.name,
         time: meal.time,
         foods: meal.foods.map((mf) => ({
+          id: mf.id,
           food: mf.food,
           quantity: mf.quantity,
         })),
@@ -79,12 +88,12 @@ interface UpdateMealPlanInput {
   dailyFat?: number | null;
 }
 
-interface CreateMealInput {
+interface CreateSlotInput {
   name: string;
   time?: string;
 }
 
-interface UpdateMealInput {
+interface UpdateSlotInput {
   name?: string;
   time?: string;
 }
@@ -119,46 +128,17 @@ export const mealPlanService = {
     await api.delete(`/api/meal-plans/${id}`);
   },
 
-  // Meal operations
-  async addMeal(planId: string, day: WeekDay, input: CreateMealInput): Promise<Meal> {
-    const meal = await api.post<ApiMeal>(
-      `/api/meal-plans/${planId}/days/${day}/meals`,
-      input
-    );
-    return {
-      id: meal.id,
-      name: meal.name,
-      time: meal.time,
-      foods: meal.foods.map((mf) => ({
-        food: mf.food,
-        quantity: mf.quantity,
-      })),
-    };
+  // Slot operations (plan-level)
+  async addSlot(planId: string, input: CreateSlotInput): Promise<MealSlot> {
+    return api.post<MealSlot>(`/api/meal-plans/${planId}/slots`, input);
   },
 
-  async updateMeal(
-    planId: string,
-    day: WeekDay,
-    mealId: string,
-    input: UpdateMealInput
-  ): Promise<Meal> {
-    const meal = await api.patch<ApiMeal>(
-      `/api/meal-plans/${planId}/days/${day}/meals/${mealId}`,
-      input
-    );
-    return {
-      id: meal.id,
-      name: meal.name,
-      time: meal.time,
-      foods: meal.foods.map((mf) => ({
-        food: mf.food,
-        quantity: mf.quantity,
-      })),
-    };
+  async updateSlot(planId: string, slotId: string, input: UpdateSlotInput): Promise<MealSlot> {
+    return api.patch<MealSlot>(`/api/meal-plans/${planId}/slots/${slotId}`, input);
   },
 
-  async deleteMeal(planId: string, day: WeekDay, mealId: string): Promise<void> {
-    await api.delete(`/api/meal-plans/${planId}/days/${day}/meals/${mealId}`);
+  async deleteSlot(planId: string, slotId: string): Promise<void> {
+    await api.delete(`/api/meal-plans/${planId}/slots/${slotId}`);
   },
 
   // Meal food operations

@@ -10,19 +10,32 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       PORT: "3000"
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-    expose:
-      - "3000"
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "3000:3000"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./apps/NutriPlan.Api
+          ignore:
+            - bin/
+            - obj/
 
   web:
     build:
       context: ./apps/web-app
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_API_URL: ""
     container_name: nutriplan-web
     restart: unless-stopped
-    expose:
-      - "80"
+    ports:
+      - "8080:80"
     depends_on:
       - api
+    develop:
+      watch:
+        - action: rebuild
+          path: ./apps/web-app
+          ignore:
+            - node_modules/

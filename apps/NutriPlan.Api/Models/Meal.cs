@@ -11,11 +11,14 @@ public class Meal
     [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    [Column("name")]
-    public required string Name { get; set; }
+    [Column("mealSlotId")]
+    public Guid MealSlotId { get; set; }
 
-    [Column("time")]
-    public string? Time { get; set; }
+    [JsonIgnore]
+    public MealSlot MealSlot { get; set; } = null!;
+
+    [Column("isCheat")]
+    public bool IsCheat { get; set; }
 
     [Column("dayPlanId")]
     public Guid DayPlanId { get; set; }

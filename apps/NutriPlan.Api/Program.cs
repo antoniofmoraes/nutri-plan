@@ -95,8 +95,10 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<FoodService>();
 builder.Services.AddScoped<MealPlanService>();
+builder.Services.AddScoped<MealSlotService>();
 builder.Services.AddScoped<MealService>();
 builder.Services.AddScoped<MealFoodService>();
+builder.Services.AddScoped<ShoppingListService>();
 
 // JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -205,24 +207,40 @@ mealPlans.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, MealPlanServi
     return Results.Json(new ApiResponse(true, Message: "Plano alimentar excluído com sucesso"));
 });
 
-// ─── Meals (nested under meal plans) ─────────────────────
-mealPlans.MapGet("/{planId:guid}/days/{day}/meals", async (Guid planId, string day, HttpContext ctx, MealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.GetMealsForDayAsync(planId, day, GetUserId(ctx)))));
+// ─── Meal Slots (plan-level meal templates) ──────────────
+mealPlans.MapPost("/{planId:guid}/slots", async (Guid planId, HttpContext ctx, CreateMealSlotRequest request, MealSlotService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(planId, GetUserId(ctx), request)), statusCode: 201));
 
-mealPlans.MapPost("/{planId:guid}/days/{day}/meals", async (Guid planId, string day, HttpContext ctx, CreateMealRequest request, MealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.CreateMealAsync(planId, day, GetUserId(ctx), request)), statusCode: 201));
+mealPlans.MapPatch("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, UpdateMealSlotRequest request, MealSlotService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(planId, slotId, GetUserId(ctx), request))));
 
-mealPlans.MapPatch("/{planId:guid}/days/{day}/meals/{mealId:guid}", async (Guid planId, string day, Guid mealId, HttpContext ctx, UpdateMealRequest request, MealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateMealAsync(mealId, GetUserId(ctx), request))));
-
-mealPlans.MapDelete("/{planId:guid}/days/{day}/meals/{mealId:guid}", async (Guid planId, string day, Guid mealId, HttpContext ctx, MealService svc) =>
+mealPlans.MapPut("/{planId:guid}/slots/order", async (Guid planId, HttpContext ctx, ReorderSlotsRequest request, MealSlotService svc) =>
 {
-    await svc.DeleteMealAsync(mealId, GetUserId(ctx));
+    await svc.ReorderAsync(planId, GetUserId(ctx), request.SlotIds);
+    return Results.Json(new ApiResponse(true, Message: "Ordem atualizada"));
+});
+
+mealPlans.MapDelete("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, MealSlotService svc) =>
+{
+    await svc.DeleteAsync(planId, slotId, GetUserId(ctx));
     return Results.Json(new ApiResponse(true, Message: "Refeição excluída com sucesso"));
 });
 
-// ─── Meal Foods ───────────────────────────────────────────
+// ─── Meals (read-only, per day) ──────────────────────────
+mealPlans.MapGet("/{planId:guid}/days/{day}/meals", async (Guid planId, string day, HttpContext ctx, MealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetMealsForDayAsync(planId, day, GetUserId(ctx)))));
+
+// ─── Meal Foods + Meal Toggle ────────────────────────────
 var meals = app.MapGroup("/api/meals").RequireAuthorization();
+
+meals.MapPatch("/{mealId:guid}/cheat", async (Guid mealId, HttpContext ctx, UpdateMealCheatRequest request, MealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.SetCheatAsync(mealId, GetUserId(ctx), request.IsCheat))));
+
+meals.MapPost("/{mealId:guid}/copy", async (Guid mealId, HttpContext ctx, CopyMealRequest request, MealService svc) =>
+{
+    await svc.CopyToAsync(mealId, GetUserId(ctx), request.TargetMealIds);
+    return Results.Json(new ApiResponse(true, Message: "Refeição copiada"));
+});
 
 meals.MapGet("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, MealFoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMealFoodsAsync(mealId, GetUserId(ctx)))));
@@ -230,13 +248,61 @@ meals.MapGet("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, MealFo
 meals.MapPost("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, AddFoodToMealRequest request, MealFoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.AddFoodToMealAsync(mealId, GetUserId(ctx), request)), statusCode: 201));
 
-meals.MapPatch("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, UpdateFoodQuantityRequest request, MealFoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateFoodQuantityAsync(mealId, foodId, GetUserId(ctx), request.Quantity))));
+meals.MapPatch("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, UpdateMealFoodRequest request, MealFoodService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateMealFoodAsync(mealId, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity))));
 
 meals.MapDelete("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, MealFoodService svc) =>
 {
     await svc.RemoveFoodFromMealAsync(mealId, foodId, GetUserId(ctx));
     return Results.Json(new ApiResponse(true, Message: "Alimento removido da refeição"));
+});
+
+// ─── Shopping Lists ───────────────────────────────────────
+var shoppingLists = app.MapGroup("/api/shopping-lists").RequireAuthorization();
+
+shoppingLists.MapGet("/", async (HttpContext ctx, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetAllForUserAsync(GetUserId(ctx)))));
+
+shoppingLists.MapGet("/{id:guid}", async (Guid id, HttpContext ctx, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id, GetUserId(ctx)))));
+
+shoppingLists.MapPost("/", async (HttpContext ctx, CreateShoppingListRequest request, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request)), statusCode: 201));
+
+shoppingLists.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdateShoppingListRequest request, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request))));
+
+shoppingLists.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, ShoppingListService svc) =>
+{
+    await svc.DeleteAsync(id, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Lista excluída com sucesso"));
+});
+
+shoppingLists.MapPut("/{id:guid}/meals", async (Guid id, HttpContext ctx, SetShoppingListMealsRequest request, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.SetMealsAsync(id, GetUserId(ctx), request))));
+
+shoppingLists.MapPost("/{id:guid}/invite", async (Guid id, HttpContext ctx, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GenerateInviteAsync(id, GetUserId(ctx)))));
+
+shoppingLists.MapDelete("/{id:guid}/invite", async (Guid id, HttpContext ctx, ShoppingListService svc) =>
+{
+    await svc.RevokeInviteAsync(id, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Convite revogado"));
+});
+
+shoppingLists.MapPost("/accept/{token}", async (string token, HttpContext ctx, ShoppingListService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.AcceptInviteAsync(token, GetUserId(ctx)))));
+
+shoppingLists.MapPost("/{id:guid}/leave", async (Guid id, HttpContext ctx, ShoppingListService svc) =>
+{
+    await svc.LeaveAsync(id, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Você saiu da lista"));
+});
+
+shoppingLists.MapDelete("/{id:guid}/members/{memberUserId:guid}", async (Guid id, Guid memberUserId, HttpContext ctx, ShoppingListService svc) =>
+{
+    await svc.RemoveMemberAsync(id, GetUserId(ctx), memberUserId);
+    return Results.Json(new ApiResponse(true, Message: "Membro removido"));
 });
 
 // ─── 404 Fallback ─────────────────────────────────────────

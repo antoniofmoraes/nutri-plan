@@ -9,8 +9,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Food> Foods => Set<Food>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
     public DbSet<DayPlan> DayPlans => Set<DayPlan>();
+    public DbSet<MealSlot> MealSlots => Set<MealSlot>();
     public DbSet<Meal> Meals => Set<Meal>();
     public DbSet<MealFood> MealFoods => Set<MealFood>();
+    public DbSet<ShoppingList> ShoppingLists => Set<ShoppingList>();
+    public DbSet<ShoppingListMember> ShoppingListMembers => Set<ShoppingListMember>();
+    public DbSet<ShoppingListMeal> ShoppingListMeals => Set<ShoppingListMeal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,11 +41,59 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<MealSlot>(entity =>
+        {
+            entity.HasOne(s => s.MealPlan)
+                .WithMany(mp => mp.Slots)
+                .HasForeignKey(s => s.MealPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<Meal>(entity =>
         {
+            entity.HasIndex(m => new { m.DayPlanId, m.MealSlotId }).IsUnique();
             entity.HasOne(m => m.DayPlan)
                 .WithMany(dp => dp.Meals)
                 .HasForeignKey(m => m.DayPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(m => m.MealSlot)
+                .WithMany(s => s.Meals)
+                .HasForeignKey(m => m.MealSlotId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShoppingList>(entity =>
+        {
+            entity.HasIndex(sl => sl.InviteToken).IsUnique().HasFilter("\"inviteToken\" IS NOT NULL");
+            entity.HasOne(sl => sl.Owner)
+                .WithMany()
+                .HasForeignKey(sl => sl.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShoppingListMember>(entity =>
+        {
+            entity.HasIndex(m => new { m.ShoppingListId, m.UserId }).IsUnique();
+            entity.HasOne(m => m.ShoppingList)
+                .WithMany(sl => sl.Members)
+                .HasForeignKey(m => m.ShoppingListId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(m => m.User)
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShoppingListMeal>(entity =>
+        {
+            entity.HasIndex(slm => new { slm.ShoppingListId, slm.MealId }).IsUnique();
+            entity.HasOne(slm => slm.ShoppingList)
+                .WithMany(sl => sl.Meals)
+                .HasForeignKey(slm => slm.ShoppingListId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(slm => slm.Meal)
+                .WithMany()
+                .HasForeignKey(slm => slm.MealId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -89,6 +141,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 plan.UpdatedAt = DateTime.UtcNow;
                 if (entry.State == EntityState.Added)
                     plan.CreatedAt = DateTime.UtcNow;
+            }
+            else if (entry.Entity is ShoppingList list)
+            {
+                list.UpdatedAt = DateTime.UtcNow;
+                if (entry.State == EntityState.Added)
+                    list.CreatedAt = DateTime.UtcNow;
             }
         }
     }

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ClipboardList, Apple, LogOut, Menu, X } from 'lucide-react';
+import { Home, ClipboardList, Apple, ShoppingCart, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Planos Alimentares', href: '/planos', icon: ClipboardList },
   { name: 'Alimentos', href: '/alimentos', icon: Apple },
+  { name: 'Listas de Compras', href: '/listas-compras', icon: ShoppingCart },
 ];
 
 export function Sidebar() {

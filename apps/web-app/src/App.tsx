@@ -12,6 +12,9 @@ import Register from "@/pages/Register";
 import MealPlans from "@/pages/MealPlans";
 import PlanDetail from "@/pages/PlanDetail";
 import Foods from "@/pages/Foods";
+import ShoppingLists from "@/pages/ShoppingLists";
+import ShoppingListDetail from "@/pages/ShoppingListDetail";
+import ShoppingListInvite from "@/pages/ShoppingListInvite";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +52,9 @@ function AppRoutes() {
       <Route path="/planos" element={<ProtectedRoute><MealPlans /></ProtectedRoute>} />
       <Route path="/planos/:id" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
       <Route path="/alimentos" element={<ProtectedRoute><Foods /></ProtectedRoute>} />
+      <Route path="/listas-compras" element={<ProtectedRoute><ShoppingLists /></ProtectedRoute>} />
+      <Route path="/listas-compras/aceitar/:token" element={<ProtectedRoute><ShoppingListInvite /></ProtectedRoute>} />
+      <Route path="/listas-compras/:id" element={<ProtectedRoute><ShoppingListDetail /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

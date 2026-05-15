@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NutriPlan.Api.Data;
@@ -11,9 +12,11 @@ using NutriPlan.Api.Data;
 namespace NutriPlan.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260513195008_RefactorMealPlanSlots")]
+    partial class RefactorMealPlanSlots
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -98,10 +101,6 @@ namespace NutriPlan.Api.Migrations
                     b.Property<Guid>("DayPlanId")
                         .HasColumnType("uuid")
                         .HasColumnName("dayPlanId");
-
-                    b.Property<bool>("IsCheat")
-                        .HasColumnType("boolean")
-                        .HasColumnName("isCheat");
 
                     b.Property<Guid>("MealSlotId")
                         .HasColumnType("uuid")
@@ -229,103 +228,6 @@ namespace NutriPlan.Api.Migrations
                     b.ToTable("meal_slots");
                 });
 
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingList", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
-
-                    b.Property<DateTime?>("InviteExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("inviteExpiresAt");
-
-                    b.Property<string>("InviteToken")
-                        .HasColumnType("text")
-                        .HasColumnName("inviteToken");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ownerId");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updatedAt");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InviteToken")
-                        .IsUnique()
-                        .HasFilter("\"inviteToken\" IS NOT NULL");
-
-                    b.HasIndex("OwnerId");
-
-                    b.ToTable("shopping_lists");
-                });
-
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingListMeal", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("MealId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("mealId");
-
-                    b.Property<Guid>("ShoppingListId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("shoppingListId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MealId");
-
-                    b.HasIndex("ShoppingListId", "MealId")
-                        .IsUnique();
-
-                    b.ToTable("shopping_list_meals");
-                });
-
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingListMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("joinedAt");
-
-                    b.Property<Guid>("ShoppingListId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("shoppingListId");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("userId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ShoppingListId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("shopping_list_members");
-                });
-
             modelBuilder.Entity("NutriPlan.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -443,55 +345,6 @@ namespace NutriPlan.Api.Migrations
                     b.Navigation("MealPlan");
                 });
 
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingList", b =>
-                {
-                    b.HasOne("NutriPlan.Api.Models.User", "Owner")
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Owner");
-                });
-
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingListMeal", b =>
-                {
-                    b.HasOne("NutriPlan.Api.Models.Meal", "Meal")
-                        .WithMany()
-                        .HasForeignKey("MealId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NutriPlan.Api.Models.ShoppingList", "ShoppingList")
-                        .WithMany("Meals")
-                        .HasForeignKey("ShoppingListId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Meal");
-
-                    b.Navigation("ShoppingList");
-                });
-
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingListMember", b =>
-                {
-                    b.HasOne("NutriPlan.Api.Models.ShoppingList", "ShoppingList")
-                        .WithMany("Members")
-                        .HasForeignKey("ShoppingListId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NutriPlan.Api.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ShoppingList");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("NutriPlan.Api.Models.DayPlan", b =>
                 {
                     b.Navigation("Meals");
@@ -517,13 +370,6 @@ namespace NutriPlan.Api.Migrations
             modelBuilder.Entity("NutriPlan.Api.Models.MealSlot", b =>
                 {
                     b.Navigation("Meals");
-                });
-
-            modelBuilder.Entity("NutriPlan.Api.Models.ShoppingList", b =>
-                {
-                    b.Navigation("Meals");
-
-                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("NutriPlan.Api.Models.User", b =>

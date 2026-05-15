@@ -16,14 +16,24 @@ export interface Food {
 }
 
 export interface MealFood {
+  id?: string;
   food: Food;
   quantity: number;
 }
 
-export interface Meal {
+export interface MealSlot {
   id: string;
   name: string;
   time?: string;
+  sortOrder: number;
+}
+
+export interface Meal {
+  id: string;
+  slotId: string;
+  name: string;
+  time?: string;
+  isCheat: boolean;
   foods: MealFood[];
 }
 
@@ -44,6 +54,7 @@ export interface MealPlan {
   dailyProtein?: number | null;
   dailyCarbs?: number | null;
   dailyFat?: number | null;
+  slots: MealSlot[];
   days: DayPlan[];
   createdAt: Date;
   updatedAt: Date;
@@ -54,4 +65,50 @@ export interface MacroSummary {
   protein: number;
   carbs: number;
   fat: number;
+}
+
+export interface ShoppingListMember {
+  userId: string;
+  name: string;
+  email: string;
+  joinedAt: string;
+}
+
+export interface ShoppingListItem {
+  foodId: string;
+  foodName: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface ShoppingList {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerName: string;
+  isOwner: boolean;
+  members: ShoppingListMember[];
+  selectedMealIds: string[];
+  items: ShoppingListItem[];
+  inviteToken?: string | null;
+  inviteExpiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingListSummary {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerName: string;
+  isOwner: boolean;
+  mealCount: number;
+  memberCount: number;
+  updatedAt: string;
+}
+
+export interface ShoppingListInvite {
+  token: string;
+  expiresAt: string;
+  url: string;
 }

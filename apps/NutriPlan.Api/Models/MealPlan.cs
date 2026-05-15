@@ -42,4 +42,5 @@ public class MealPlan
     public User User { get; set; } = null!;
 
     public ICollection<DayPlan> Days { get; set; } = [];
+    public ICollection<MealSlot> Slots { get; set; } = [];
 }

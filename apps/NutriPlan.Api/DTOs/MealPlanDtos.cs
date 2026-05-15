@@ -41,7 +41,7 @@ public record UpdateMealPlanRequest
     public int? DailyFat { get; init; }
 }
 
-public record CreateMealRequest
+public record CreateMealSlotRequest
 {
     [Required(ErrorMessage = "Nome é obrigatório")]
     [MinLength(1)]
@@ -50,7 +50,7 @@ public record CreateMealRequest
     public string? Time { get; init; }
 }
 
-public record UpdateMealRequest
+public record UpdateMealSlotRequest
 {
     [MinLength(1)]
     public string? Name { get; init; }
@@ -67,10 +67,12 @@ public record AddFoodToMealRequest
     public double Quantity { get; init; } = 100;
 }
 
-public record UpdateFoodQuantityRequest
+public record UpdateMealFoodRequest
 {
+    public Guid? NewFoodId { get; init; }
+
     [Range(0.01, double.MaxValue, ErrorMessage = "Quantidade deve ser positivo")]
-    public double Quantity { get; init; }
+    public double? Quantity { get; init; }
 }
 
 public record MealPlanResponse(
@@ -81,13 +83,33 @@ public record MealPlanResponse(
     int? DailyProtein,
     int? DailyCarbs,
     int? DailyFat,
+    List<MealSlotResponse> Slots,
     List<DayPlanResponse> Days,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
 
+public record MealSlotResponse(Guid Id, string Name, string? Time, int SortOrder);
+
 public record DayPlanResponse(string Day, List<MealResponse> Meals);
 
-public record MealResponse(Guid Id, string Name, string? Time, List<MealFoodResponse> Foods);
+public record MealResponse(Guid Id, Guid SlotId, string Name, string? Time, bool IsCheat, List<MealFoodResponse> Foods);
+
+public record UpdateMealCheatRequest
+{
+    public bool IsCheat { get; init; }
+}
+
+public record CopyMealRequest
+{
+    [Required]
+    public required List<Guid> TargetMealIds { get; init; }
+}
+
+public record ReorderSlotsRequest
+{
+    [Required]
+    public required List<Guid> SlotIds { get; init; }
+}
 
 public record MealFoodResponse(Guid Id, double Quantity, FoodResponse Food);

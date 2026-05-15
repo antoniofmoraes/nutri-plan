@@ -65,6 +65,30 @@ public class MealSlotService(AppDbContext db)
         return new MealSlotResponse(slot.Id, slot.Name, slot.Time, slot.SortOrder);
     }
 
+    public async Task ReorderAsync(Guid planId, Guid userId, List<Guid> slotIds)
+    {
+        var plan = await db.MealPlans
+            .Include(mp => mp.Slots)
+            .FirstOrDefaultAsync(mp => mp.Id == planId);
+
+        if (plan is null)
+            throw new ApiException("Plano alimentar não encontrado", 404);
+        if (plan.UserId != userId)
+            throw new ApiException("Acesso negado", 403);
+
+        var planSlotIds = plan.Slots.Select(s => s.Id).ToHashSet();
+        if (slotIds.Count != planSlotIds.Count || !slotIds.All(planSlotIds.Contains))
+            throw new ApiException("Lista de slots inválida", 400);
+
+        for (var i = 0; i < slotIds.Count; i++)
+        {
+            var slot = plan.Slots.First(s => s.Id == slotIds[i]);
+            slot.SortOrder = i;
+        }
+
+        await db.SaveChangesAsync();
+    }
+
     public async Task DeleteAsync(Guid planId, Guid slotId, Guid userId)
     {
         var slot = await db.MealSlots

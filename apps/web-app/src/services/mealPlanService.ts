@@ -143,8 +143,16 @@ export const mealPlanService = {
     await api.delete(`/api/meal-plans/${planId}/slots/${slotId}`);
   },
 
+  async reorderSlots(planId: string, slotIds: string[]): Promise<void> {
+    await api.put(`/api/meal-plans/${planId}/slots/order`, { slotIds });
+  },
+
   async setMealCheat(mealId: string, isCheat: boolean): Promise<void> {
     await api.patch(`/api/meals/${mealId}/cheat`, { isCheat });
+  },
+
+  async copyMeal(mealId: string, targetMealIds: string[]): Promise<void> {
+    await api.post(`/api/meals/${mealId}/copy`, { targetMealIds });
   },
 
   // Meal food operations
@@ -154,5 +162,9 @@ export const mealPlanService = {
 
   async removeFoodFromMeal(mealId: string, foodId: string): Promise<void> {
     await api.delete(`/api/meals/${mealId}/foods/${foodId}`);
+  },
+
+  async updateMealFood(mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }): Promise<void> {
+    await api.patch(`/api/meals/${mealId}/foods/${foodId}`, updates);
   },
 };

@@ -50,9 +50,12 @@ interface MealPlanContextType {
   addSlot: (planId: string, input: SlotInput) => Promise<void>;
   updateSlot: (planId: string, slotId: string, updates: SlotUpdate) => Promise<void>;
   deleteSlot: (planId: string, slotId: string) => Promise<void>;
+  reorderSlots: (planId: string, slotIds: string[]) => Promise<void>;
   addFoodToMeal: (planId: string, mealId: string, food: Food, quantity: number) => Promise<void>;
   removeFoodFromMeal: (planId: string, mealId: string, foodId: string) => Promise<void>;
+  updateMealFood: (planId: string, mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => Promise<void>;
   setMealCheat: (planId: string, mealId: string, isCheat: boolean) => Promise<void>;
+  copyMeal: (planId: string, sourceMealId: string, targetMealIds: string[]) => Promise<void>;
   calculateMealMacros: (meal: Meal, plan?: MealPlan) => MacroSummary;
   calculateRawMealMacros: (meal: Meal) => MacroSummary;
   calculateDayMacros: (dayPlan: DayPlan, plan?: MealPlan) => MacroSummary;
@@ -151,6 +154,11 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     await refreshPlan(planId);
   };
 
+  const reorderSlots = async (planId: string, slotIds: string[]) => {
+    await mealPlanService.reorderSlots(planId, slotIds);
+    await refreshPlan(planId);
+  };
+
   const addFoodToMeal = async (planId: string, mealId: string, food: Food, quantity: number) => {
     await mealPlanService.addFoodToMeal(mealId, { foodId: food.id, quantity });
     await refreshPlan(planId);
@@ -161,8 +169,18 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     await refreshPlan(planId);
   };
 
+  const updateMealFood = async (planId: string, mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => {
+    await mealPlanService.updateMealFood(mealId, foodId, updates);
+    await refreshPlan(planId);
+  };
+
   const setMealCheat = async (planId: string, mealId: string, isCheat: boolean) => {
     await mealPlanService.setMealCheat(mealId, isCheat);
+    await refreshPlan(planId);
+  };
+
+  const copyMeal = async (planId: string, sourceMealId: string, targetMealIds: string[]) => {
+    await mealPlanService.copyMeal(sourceMealId, targetMealIds);
     await refreshPlan(planId);
   };
 
@@ -279,9 +297,12 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         addSlot,
         updateSlot,
         deleteSlot,
+        reorderSlots,
         addFoodToMeal,
         removeFoodFromMeal,
+        updateMealFood,
         setMealCheat,
+        copyMeal,
         calculateMealMacros,
         calculateRawMealMacros,
         calculateDayMacros,

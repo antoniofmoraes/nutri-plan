@@ -67,10 +67,12 @@ public record AddFoodToMealRequest
     public double Quantity { get; init; } = 100;
 }
 
-public record UpdateFoodQuantityRequest
+public record UpdateMealFoodRequest
 {
+    public Guid? NewFoodId { get; init; }
+
     [Range(0.01, double.MaxValue, ErrorMessage = "Quantidade deve ser positivo")]
-    public double Quantity { get; init; }
+    public double? Quantity { get; init; }
 }
 
 public record MealPlanResponse(
@@ -96,6 +98,18 @@ public record MealResponse(Guid Id, Guid SlotId, string Name, string? Time, bool
 public record UpdateMealCheatRequest
 {
     public bool IsCheat { get; init; }
+}
+
+public record CopyMealRequest
+{
+    [Required]
+    public required List<Guid> TargetMealIds { get; init; }
+}
+
+public record ReorderSlotsRequest
+{
+    [Required]
+    public required List<Guid> SlotIds { get; init; }
 }
 
 public record MealFoodResponse(Guid Id, double Quantity, FoodResponse Food);

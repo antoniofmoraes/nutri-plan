@@ -52,7 +52,7 @@ public class MealFoodService(AppDbContext db)
         return ToResponse(mealFood);
     }
 
-    public async Task<MealFoodResponse> UpdateFoodQuantityAsync(Guid mealId, Guid foodId, Guid userId, double quantity)
+    public async Task<MealFoodResponse> UpdateMealFoodAsync(Guid mealId, Guid foodId, Guid userId, Guid? newFoodId, double? quantity)
     {
         await GetMealWithOwnership(mealId, userId);
 
@@ -63,9 +63,45 @@ public class MealFoodService(AppDbContext db)
         if (mealFood is null)
             throw new ApiException("Alimento não está na refeição", 404);
 
-        mealFood.Quantity = quantity;
+        var targetQuantity = quantity ?? mealFood.Quantity;
+        var targetFoodId = newFoodId ?? foodId;
+
+        if (targetFoodId == foodId)
+        {
+            mealFood.Quantity = targetQuantity;
+            await db.SaveChangesAsync();
+            return ToResponse(mealFood);
+        }
+
+        // Food swap: remove current row, then upsert the new food
+        var newFood = await db.Foods.FindAsync(targetFoodId);
+        if (newFood is null)
+            throw new ApiException("Alimento não encontrado", 404);
+
+        db.MealFoods.Remove(mealFood);
         await db.SaveChangesAsync();
-        return ToResponse(mealFood);
+
+        var existing = await db.MealFoods
+            .Include(mf => mf.Food)
+            .FirstOrDefaultAsync(mf => mf.MealId == mealId && mf.FoodId == targetFoodId);
+
+        if (existing is not null)
+        {
+            existing.Quantity = targetQuantity;
+            await db.SaveChangesAsync();
+            return ToResponse(existing);
+        }
+
+        var swapped = new MealFood
+        {
+            MealId = mealId,
+            FoodId = targetFoodId,
+            Quantity = targetQuantity
+        };
+        db.MealFoods.Add(swapped);
+        await db.SaveChangesAsync();
+        swapped.Food = newFood;
+        return ToResponse(swapped);
     }
 
     public async Task RemoveFoodFromMealAsync(Guid mealId, Guid foodId, Guid userId)

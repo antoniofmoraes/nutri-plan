@@ -27,6 +27,54 @@ public class MealService(AppDbContext db)
             .ToList();
     }
 
+    public async Task CopyToAsync(Guid sourceMealId, Guid userId, List<Guid> targetMealIds)
+    {
+        if (targetMealIds.Count == 0) return;
+
+        var source = await db.Meals
+            .Include(m => m.Foods)
+            .Include(m => m.DayPlan).ThenInclude(dp => dp.MealPlan)
+            .FirstOrDefaultAsync(m => m.Id == sourceMealId);
+
+        if (source is null)
+            throw new ApiException("Refeição de origem não encontrada", 404);
+        if (source.DayPlan.MealPlan.UserId != userId)
+            throw new ApiException("Acesso negado", 403);
+
+        var targets = await db.Meals
+            .Include(m => m.Foods)
+            .Include(m => m.DayPlan).ThenInclude(dp => dp.MealPlan)
+            .Where(m => targetMealIds.Contains(m.Id))
+            .ToListAsync();
+
+        foreach (var target in targets)
+        {
+            if (target.DayPlan.MealPlan.UserId != userId)
+                throw new ApiException("Acesso negado a uma refeição", 403);
+            if (target.MealSlotId != source.MealSlotId)
+                throw new ApiException("Só é possível copiar entre o mesmo tipo de refeição", 400);
+            if (target.Id == source.Id)
+                continue;
+
+            // Clear existing foods + free flag
+            db.MealFoods.RemoveRange(target.Foods);
+            target.IsCheat = false;
+
+            // Replicate foods
+            foreach (var sf in source.Foods)
+            {
+                db.MealFoods.Add(new MealFood
+                {
+                    MealId = target.Id,
+                    FoodId = sf.FoodId,
+                    Quantity = sf.Quantity
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
     public async Task<MealResponse> SetCheatAsync(Guid mealId, Guid userId, bool isCheat)
     {
         var meal = await db.Meals

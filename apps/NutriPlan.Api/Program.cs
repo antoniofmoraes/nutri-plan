@@ -214,6 +214,12 @@ mealPlans.MapPost("/{planId:guid}/slots", async (Guid planId, HttpContext ctx, C
 mealPlans.MapPatch("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, UpdateMealSlotRequest request, MealSlotService svc) =>
     Results.Json(ApiResponses.Ok(await svc.UpdateAsync(planId, slotId, GetUserId(ctx), request))));
 
+mealPlans.MapPut("/{planId:guid}/slots/order", async (Guid planId, HttpContext ctx, ReorderSlotsRequest request, MealSlotService svc) =>
+{
+    await svc.ReorderAsync(planId, GetUserId(ctx), request.SlotIds);
+    return Results.Json(new ApiResponse(true, Message: "Ordem atualizada"));
+});
+
 mealPlans.MapDelete("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, MealSlotService svc) =>
 {
     await svc.DeleteAsync(planId, slotId, GetUserId(ctx));
@@ -230,14 +236,20 @@ var meals = app.MapGroup("/api/meals").RequireAuthorization();
 meals.MapPatch("/{mealId:guid}/cheat", async (Guid mealId, HttpContext ctx, UpdateMealCheatRequest request, MealService svc) =>
     Results.Json(ApiResponses.Ok(await svc.SetCheatAsync(mealId, GetUserId(ctx), request.IsCheat))));
 
+meals.MapPost("/{mealId:guid}/copy", async (Guid mealId, HttpContext ctx, CopyMealRequest request, MealService svc) =>
+{
+    await svc.CopyToAsync(mealId, GetUserId(ctx), request.TargetMealIds);
+    return Results.Json(new ApiResponse(true, Message: "Refeição copiada"));
+});
+
 meals.MapGet("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, MealFoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMealFoodsAsync(mealId, GetUserId(ctx)))));
 
 meals.MapPost("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, AddFoodToMealRequest request, MealFoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.AddFoodToMealAsync(mealId, GetUserId(ctx), request)), statusCode: 201));
 
-meals.MapPatch("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, UpdateFoodQuantityRequest request, MealFoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateFoodQuantityAsync(mealId, foodId, GetUserId(ctx), request.Quantity))));
+meals.MapPatch("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, UpdateMealFoodRequest request, MealFoodService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateMealFoodAsync(mealId, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity))));
 
 meals.MapDelete("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, MealFoodService svc) =>
 {

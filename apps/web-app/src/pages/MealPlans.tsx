@@ -83,8 +83,13 @@ export default function MealPlans() {
     setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteMealPlan(id);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (deleteTarget) {
+      deleteMealPlan(deleteTarget);
+      setDeleteTarget(null);
+    }
   };
 
   return (
@@ -241,7 +246,7 @@ export default function MealPlans() {
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(plan.id);
+                          setDeleteTarget(plan.id);
                         }}
                         className="hover:text-destructive"
                       >
@@ -266,6 +271,25 @@ export default function MealPlans() {
           })}
         </div>
       )}
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Excluir plano alimentar</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja excluir este plano? Esta ação não pode ser desfeita.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

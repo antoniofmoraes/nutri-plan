@@ -59,7 +59,7 @@ public class MealSlotService(AppDbContext db)
             throw new ApiException("Acesso negado", 403);
 
         if (request.Name is not null) slot.Name = request.Name;
-        if (request.Time is not null) slot.Time = request.Time;
+        if (request.Time is not null) slot.Time = string.IsNullOrWhiteSpace(request.Time) ? null : request.Time;
 
         await db.SaveChangesAsync();
         return new MealSlotResponse(slot.Id, slot.Name, slot.Time, slot.SortOrder);

@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, X, Search, Sparkles, CalendarDays, Copy, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, X, Search, Sparkles, CalendarDays, Copy, ChevronUp, ChevronDown, Trash2, Settings2, BookCopy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -30,6 +30,7 @@ export default function PlanDetail() {
   const {
     mealPlans,
     foods,
+    presetMeals,
     addSlot,
     updateSlot,
     deleteSlot,
@@ -39,6 +40,7 @@ export default function PlanDetail() {
     updateMealFood,
     setMealCheat,
     copyMeal,
+    applyPreset,
     calculateMealMacros,
     calculateDayMacros,
   } = useMealPlan();
@@ -47,17 +49,17 @@ export default function PlanDetail() {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedDay, setSelectedDay] = useState<WeekDay>('segunda');
 
-  // Slot dialog state
-  const [slotDialogOpen, setSlotDialogOpen] = useState(false);
-  const [editingSlot, setEditingSlot] = useState<MealSlot | null>(null);
-  const [slotForm, setSlotForm] = useState({ name: '', time: '' });
+  // Slot manager modal
+  const [slotsManagerOpen, setSlotsManagerOpen] = useState(false);
 
   // Food dialog state
   const [foodDialogOpen, setFoodDialogOpen] = useState(false);
+  const [foodDialogMode, setFoodDialogMode] = useState<'food' | 'preset'>('food');
   const [targetMealId, setTargetMealId] = useState<string | null>(null);
   const [selectedFoodId, setSelectedFoodId] = useState<string>('');
   const [foodQuantity, setFoodQuantity] = useState('100');
   const [foodSearch, setFoodSearch] = useState('');
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   const filteredFoods = useMemo(() => {
     const q = foodSearch.trim().toLowerCase();
@@ -78,31 +80,12 @@ export default function PlanDetail() {
     );
   }
 
-  const handleOpenSlotDialog = (slot?: MealSlot) => {
-    if (slot) {
-      setEditingSlot(slot);
-      setSlotForm({ name: slot.name, time: slot.time || '' });
-    } else {
-      setEditingSlot(null);
-      setSlotForm({ name: '', time: '' });
-    }
-    setSlotDialogOpen(true);
+  const handleAddSlot = async (input: { name: string; time?: string }) => {
+    await addSlot(plan.id, input);
   };
 
-  const handleSaveSlot = async () => {
-    if (!slotForm.name.trim()) return;
-    if (editingSlot) {
-      await updateSlot(plan.id, editingSlot.id, {
-        name: slotForm.name,
-        time: slotForm.time || undefined,
-      });
-    } else {
-      await addSlot(plan.id, {
-        name: slotForm.name,
-        time: slotForm.time || undefined,
-      });
-    }
-    setSlotDialogOpen(false);
+  const handleUpdateSlot = async (slotId: string, updates: { name?: string; time?: string }) => {
+    await updateSlot(plan.id, slotId, updates);
   };
 
   const handleDeleteSlot = async (slotId: string) => {
@@ -121,9 +104,11 @@ export default function PlanDetail() {
 
   const handleOpenFoodDialog = (mealId: string) => {
     setTargetMealId(mealId);
+    setFoodDialogMode('food');
     setSelectedFoodId('');
     setFoodQuantity('100');
     setFoodSearch('');
+    setSelectedPresetId('');
     setFoodDialogOpen(true);
   };
 
@@ -132,6 +117,12 @@ export default function PlanDetail() {
     const food = foods.find((f) => f.id === selectedFoodId);
     if (!food) return;
     await addFoodToMeal(plan.id, targetMealId, food, Number(foodQuantity));
+    setFoodDialogOpen(false);
+  };
+
+  const handleApplyPreset = async () => {
+    if (!targetMealId || !selectedPresetId) return;
+    await applyPreset(plan.id, selectedPresetId, [targetMealId]);
     setFoodDialogOpen(false);
   };
 
@@ -184,54 +175,11 @@ export default function PlanDetail() {
             Semana
           </Button>
         )}
-        <Button onClick={() => handleOpenSlotDialog()} className="bg-gradient-primary">
-          <Plus className="mr-1 h-4 w-4" />
-          Refeição
+        <Button onClick={() => setSlotsManagerOpen(true)} className="bg-gradient-primary">
+          <Settings2 className="mr-1 h-4 w-4" />
+          Editar refeições
         </Button>
       </div>
-
-      {/* Slot management chips */}
-      {plan.slots.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-display">Refeições do plano</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {[...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder).map((slot, idx, arr) => (
-              <div key={slot.id} className="flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-sm">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5"
-                  disabled={idx === 0}
-                  onClick={() => handleMoveSlot(slot.id, -1)}
-                  title="Mover para cima"
-                >
-                  <ChevronUp className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5"
-                  disabled={idx === arr.length - 1}
-                  onClick={() => handleMoveSlot(slot.id, 1)}
-                  title="Mover para baixo"
-                >
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-                <span className="font-medium">{slot.name}</span>
-                {slot.time && <span className="text-xs text-muted-foreground">• {slot.time}</span>}
-                <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleOpenSlotDialog(slot)}>
-                  <Edit className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-destructive" onClick={() => handleDeleteSlot(slot.id)}>
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       {plan.slots.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-muted p-10 text-center">
@@ -265,123 +213,151 @@ export default function PlanDetail() {
         />
       )}
 
-      {/* Slot Dialog */}
-      <Dialog open={slotDialogOpen} onOpenChange={setSlotDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-display">
-              {editingSlot ? 'Editar Refeição' : 'Nova Refeição'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome da Refeição</Label>
-              <Input
-                placeholder="Ex: Café da manhã"
-                value={slotForm.name}
-                onChange={(e) => setSlotForm({ ...slotForm, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Horário (opcional)</Label>
-              <Input
-                placeholder="Ex: 07:00"
-                value={slotForm.time}
-                onChange={(e) => setSlotForm({ ...slotForm, time: e.target.value })}
-              />
-            </div>
-            {!editingSlot && (
-              <p className="text-xs text-muted-foreground">
-                Essa refeição será criada em todos os dias da semana.
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button onClick={handleSaveSlot} className="bg-gradient-primary">
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Slots Manager Dialog */}
+      <SlotsManagerDialog
+        open={slotsManagerOpen}
+        onOpenChange={setSlotsManagerOpen}
+        slots={[...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder)}
+        onAdd={handleAddSlot}
+        onUpdate={handleUpdateSlot}
+        onDelete={handleDeleteSlot}
+        onMove={handleMoveSlot}
+      />
 
-      {/* Food Dialog */}
+      {/* Food / Preset Dialog */}
       <Dialog open={foodDialogOpen} onOpenChange={setFoodDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display">Adicionar Alimento</DialogTitle>
+            <DialogTitle className="font-display">
+              {foodDialogMode === 'food' ? 'Adicionar Alimento' : 'Aplicar Refeição Pronta'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Alimento</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    {selectedFood ? (
-                      <span className="truncate">{selectedFood.name}</span>
-                    ) : (
-                      <span className="text-muted-foreground">Selecione um alimento</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar alimento..."
-                        value={foodSearch}
-                        onChange={(e) => setFoodSearch(e.target.value)}
-                        className="pl-8 h-8"
-                      />
-                    </div>
+
+          {/* Mode toggle */}
+          <Tabs value={foodDialogMode} onValueChange={(v) => setFoodDialogMode(v as 'food' | 'preset')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="food" className="text-xs">Alimento</TabsTrigger>
+              <TabsTrigger value="preset" className="text-xs" disabled={presetMeals.length === 0}>
+                <BookCopy className="mr-1 h-3 w-3" />
+                Refeição Pronta
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {foodDialogMode === 'food' ? (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label>Alimento</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        {selectedFood ? (
+                          <span className="truncate">{selectedFood.name}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Selecione um alimento</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="Buscar alimento..."
+                            value={foodSearch}
+                            onChange={(e) => setFoodSearch(e.target.value)}
+                            className="pl-8 h-8"
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {filteredFoods.length === 0 ? (
+                          <p className="p-3 text-sm text-center text-muted-foreground">
+                            Nenhum alimento encontrado
+                          </p>
+                        ) : (
+                          filteredFoods.map((food) => (
+                            <button
+                              key={food.id}
+                              type="button"
+                              onClick={() => setSelectedFoodId(food.id)}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary ${
+                                selectedFoodId === food.id ? 'bg-secondary' : ''
+                              }`}
+                            >
+                              <div className="font-medium truncate">{food.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {food.calories} kcal/100g
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>Quantidade (gramas)</Label>
+                  <Input
+                    type="number"
+                    placeholder="100"
+                    value={foodQuantity}
+                    onChange={(e) => setFoodQuantity(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button onClick={handleAddFood} className="bg-gradient-primary" disabled={!selectedFoodId}>
+                  Adicionar
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label>Refeição Pronta</Label>
+                  <div className="max-h-64 overflow-y-auto rounded-md border">
+                    {presetMeals.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setSelectedPresetId(preset.id)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary border-b last:border-b-0 ${
+                          selectedPresetId === preset.id ? 'bg-secondary' : ''
+                        }`}
+                      >
+                        <div className="font-medium">{preset.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {preset.foods.length} alimento{preset.foods.length !== 1 ? 's' : ''}
+                          {preset.foods.length > 0 && (
+                            <span className="ml-1">
+                              — {preset.foods.map(f => f.food.name).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {filteredFoods.length === 0 ? (
-                      <p className="p-3 text-sm text-center text-muted-foreground">
-                        Nenhum alimento encontrado
-                      </p>
-                    ) : (
-                      filteredFoods.map((food) => (
-                        <button
-                          key={food.id}
-                          type="button"
-                          onClick={() => setSelectedFoodId(food.id)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary ${
-                            selectedFoodId === food.id ? 'bg-secondary' : ''
-                          }`}
-                        >
-                          <div className="font-medium truncate">{food.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {food.calories} kcal/100g
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>Quantidade (gramas)</Label>
-              <Input
-                type="number"
-                placeholder="100"
-                value={foodQuantity}
-                onChange={(e) => setFoodQuantity(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button onClick={handleAddFood} className="bg-gradient-primary" disabled={!selectedFoodId}>
-              Adicionar
-            </Button>
-          </DialogFooter>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Os alimentos atuais da refeição serão substituídos pelos alimentos da refeição pronta.
+                </p>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button onClick={handleApplyPreset} className="bg-gradient-primary" disabled={!selectedPresetId}>
+                  Aplicar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -405,138 +381,146 @@ interface WeekViewProps extends ViewProps {
 }
 
 function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCheat, onCopyMeal, calculateDayMacros, calculateMealMacros }: WeekViewProps) {
+  const orderedSlots = [...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder);
+
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x">
-      {weekDays.map((day) => {
-        const dayPlan = plan.days.find(d => d.day === day.value);
-        const dayMacros = dayPlan ? calculateDayMacros(dayPlan) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
-
-        return (
-          <div key={day.value} className="flex flex-col p-3">
-            <button
-              type="button"
-              onClick={() => onDayClick(day.value)}
-              className="text-left hover:opacity-80 transition-opacity mb-2"
-            >
-              <div className="text-sm font-display font-bold flex items-baseline justify-between gap-1">
-                <span>{day.label}</span>
-                <span className="text-xs font-normal text-accent">
-                  {dayMacros.calories.toFixed(0)} kcal
-                </span>
-              </div>
-              <div className="flex gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                <span>P: {dayMacros.protein.toFixed(0)}g</span>
-                <span>C: {dayMacros.carbs.toFixed(0)}g</span>
-                <span>G: {dayMacros.fat.toFixed(0)}g</span>
-              </div>
-            </button>
-            <div className="flex-1 space-y-2">
-              {plan.slots.map((slot) => {
-                const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
-                if (!meal) return null;
-                const macros = calculateMealMacros(meal);
+        <table className="w-full border-collapse table-fixed">
+          {/* Header row: empty corner + day columns */}
+          <thead>
+            <tr className="border-b">
+              <th className="w-[10%] p-2 text-center align-middle border-r bg-muted/30" />
+              {weekDays.map((day) => {
+                const dayPlan = plan.days.find(d => d.day === day.value);
+                const dayMacros = dayPlan ? calculateDayMacros(dayPlan) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
                 return (
-                  <div
-                    key={slot.id}
-                    className={`rounded-md border p-2 flex flex-col gap-1 ${
-                      meal.isCheat ? 'border-accent/40 bg-accent/5' : 'border-border bg-card'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold truncate">{slot.name}</p>
-                        {slot.time && (
-                          <p className="text-[10px] text-muted-foreground">{slot.time}</p>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-accent font-medium flex-shrink-0">
-                        {macros.calories.toFixed(0)}
-                      </span>
-                    </div>
-
-                    {meal.isCheat ? (
-                      <>
-                        <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full self-start flex items-center gap-1">
-                          <Sparkles className="h-2.5 w-2.5" /> Livre
+                  <th key={day.value} className="p-2 text-left align-bottom border-r last:border-r-0">
+                    <button
+                      type="button"
+                      onClick={() => onDayClick(day.value)}
+                      className="text-left hover:opacity-80 transition-opacity w-full"
+                    >
+                      <div className="text-sm font-display font-bold flex items-baseline justify-between gap-1">
+                        <span>{day.short}</span>
+                        <span className="text-xs font-normal text-accent">
+                          {dayMacros.calories.toFixed(0)} kcal
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-[10px] justify-start px-1"
-                          onClick={() => onToggleCheat(meal.id, true)}
-                        >
-                          Desmarcar
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="space-y-0.5">
-                          {meal.foods.length === 0 ? (
-                            <p className="text-[10px] text-muted-foreground italic">Vazio</p>
-                          ) : (
-                            meal.foods.map(({ food, quantity }, idx) => (
-                              <div key={idx} className="text-[11px] flex items-center justify-between gap-1 group">
-                                <span className="truncate">
-                                  {food.name}{' '}
-                                  <span className="text-muted-foreground">{quantity}g</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => onRemoveFood(meal.id, food.id)}
-                                  className="opacity-0 group-hover:opacity-100 hover:text-destructive flex-shrink-0"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-xs flex-1 px-1"
-                            onClick={() => onAddFood(meal.id)}
-                            title="Adicionar alimento"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          {meal.foods.length > 0 && (
-                            <CopyMealPopover
-                              plan={plan}
-                              meal={meal}
-                              currentDay={day.value}
-                              onCopy={(targetIds) => onCopyMeal(meal.id, targetIds)}
-                            />
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-xs px-1"
-                            onClick={() => onToggleCheat(meal.id, false)}
-                            title="Marcar como livre"
-                          >
-                            <Sparkles className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                      <div className="flex gap-2 mt-0.5 text-[10px] text-muted-foreground font-normal">
+                        <span>P: {dayMacros.protein.toFixed(0)}g</span>
+                        <span>C: {dayMacros.carbs.toFixed(0)}g</span>
+                        <span>G: {dayMacros.fat.toFixed(0)}g</span>
+                      </div>
+                    </button>
+                  </th>
                 );
               })}
+            </tr>
+          </thead>
+          <tbody>
+            {orderedSlots.map((slot) => (
+              <tr key={slot.id} className="border-b last:border-b-0">
+                {/* Row label: slot name + time */}
+                <td className="p-2 align-middle text-center border-r bg-muted/30">
+                  <p className="text-xs font-semibold break-words">{slot.name}</p>
+                  {slot.time && (
+                    <p className="text-[10px] text-muted-foreground">{slot.time}</p>
+                  )}
+                </td>
+                {/* Day cells */}
+                {weekDays.map((day) => {
+                  const dayPlan = plan.days.find(d => d.day === day.value);
+                  const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
+                  if (!meal) return <td key={day.value} className="p-2 align-top border-r last:border-r-0" />;
+                  const macros = calculateMealMacros(meal);
+                  return (
+                    <td
+                      key={day.value}
+                      className={`p-2 align-top border-r last:border-r-0 ${
+                        meal.isCheat ? 'bg-accent/5' : ''
+                      }`}
+                    >
+                      <div className="flex flex-col gap-1 h-full">
+                        <span className="text-[10px] text-accent font-medium">
+                          {macros.calories.toFixed(0)} kcal
+                        </span>
 
-              {plan.slots.length === 0 && (
-                <p className="text-xs text-muted-foreground italic text-center py-4">
-                  Sem refeições
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      })}
-        </div>
+                        {meal.isCheat ? (
+                          <>
+                            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full self-start flex items-center gap-1">
+                              <Sparkles className="h-2.5 w-2.5" /> Livre
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[10px] justify-start px-1 mt-auto"
+                              onClick={() => onToggleCheat(meal.id, true)}
+                            >
+                              Desmarcar
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="space-y-0.5 flex-1">
+                              {meal.foods.length === 0 ? (
+                                <p className="text-[10px] text-muted-foreground italic">Vazio</p>
+                              ) : (
+                                meal.foods.map(({ food, quantity }, idx) => (
+                                  <div key={idx} className="text-[11px] flex items-center justify-between gap-1 group">
+                                    <span className="truncate">
+                                      {food.name}{' '}
+                                      <span className="text-muted-foreground">{quantity}g</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => onRemoveFood(meal.id, food.id)}
+                                      className="opacity-0 group-hover:opacity-100 hover:text-destructive flex-shrink-0"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                            <div className="flex gap-1 mt-auto">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-xs flex-1 px-1"
+                                onClick={() => onAddFood(meal.id)}
+                                title="Adicionar alimento"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              {meal.foods.length > 0 && (
+                                <CopyMealPopover
+                                  plan={plan}
+                                  meal={meal}
+                                  currentDay={day.value}
+                                  onCopy={(targetIds) => onCopyMeal(meal.id, targetIds)}
+                                />
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs px-1"
+                                onClick={() => onToggleCheat(meal.id, false)}
+                                title="Marcar como livre"
+                              >
+                                <Sparkles className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </CardContent>
     </Card>
   );
@@ -903,6 +887,181 @@ function EditableFoodRow({ foods, currentFood, currentQuantity, onSave, onRemove
           Salvar
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ─── Slots Manager Dialog ───────────────────────────────────
+
+interface SlotsManagerDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  slots: MealSlot[];
+  onAdd: (input: { name: string; time?: string }) => Promise<void>;
+  onUpdate: (slotId: string, updates: { name?: string; time?: string }) => Promise<void>;
+  onDelete: (slotId: string) => void;
+  onMove: (slotId: string, direction: -1 | 1) => Promise<void>;
+}
+
+function SlotsManagerDialog({ open, onOpenChange, slots, onAdd, onUpdate, onDelete, onMove }: SlotsManagerDialogProps) {
+  const [newName, setNewName] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    if (!newName.trim() || adding) return;
+    setAdding(true);
+    try {
+      await onAdd({ name: newName.trim(), time: newTime || undefined });
+      setNewName('');
+      setNewTime('');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display">Editar Refeições</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Refeições aparecem em todos os dias da semana
+          </p>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Add form */}
+          <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+            <Label className="text-xs">Nova refeição</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nome (ex: Café da manhã)"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="flex-1"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              />
+              <Input
+                placeholder="Hora"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="w-24"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              />
+              <Button onClick={handleAdd} disabled={!newName.trim() || adding} className="bg-gradient-primary">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* List */}
+          {slots.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-6">
+              Nenhuma refeição ainda. Adicione acima.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {slots.map((slot, idx) => (
+                <SlotEditRow
+                  key={slot.id}
+                  slot={slot}
+                  isFirst={idx === 0}
+                  isLast={idx === slots.length - 1}
+                  onMove={onMove}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Fechar</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface SlotEditRowProps {
+  slot: MealSlot;
+  isFirst: boolean;
+  isLast: boolean;
+  onMove: (slotId: string, direction: -1 | 1) => Promise<void>;
+  onUpdate: (slotId: string, updates: { name?: string; time?: string }) => Promise<void>;
+  onDelete: (slotId: string) => void;
+}
+
+function SlotEditRow({ slot, isFirst, isLast, onMove, onUpdate, onDelete }: SlotEditRowProps) {
+  const [name, setName] = useState(slot.name);
+  const [time, setTime] = useState(slot.time || '');
+
+  // Sync local state when slot prop changes (e.g., after reorder/refresh)
+  useEffect(() => {
+    setName(slot.name);
+    setTime(slot.time || '');
+  }, [slot.id, slot.name, slot.time]);
+
+  const commitChanges = () => {
+    const updates: { name?: string; time?: string } = {};
+    const trimmedName = name.trim();
+    if (trimmedName && trimmedName !== slot.name) updates.name = trimmedName;
+    const normalizedTime = time.trim();
+    if (normalizedTime !== (slot.time || '')) updates.time = normalizedTime;
+    if (Object.keys(updates).length > 0) onUpdate(slot.id, updates);
+  };
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg border p-1.5">
+      <div className="flex flex-col">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5"
+          disabled={isFirst}
+          onClick={() => onMove(slot.id, -1)}
+          title="Mover para cima"
+        >
+          <ChevronUp className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5"
+          disabled={isLast}
+          onClick={() => onMove(slot.id, 1)}
+          title="Mover para baixo"
+        >
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </div>
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={commitChanges}
+        className="h-8 flex-1"
+        placeholder="Nome"
+      />
+      <Input
+        value={time}
+        onChange={(e) => setTime(e.target.value)}
+        onBlur={commitChanges}
+        className="h-8 w-20"
+        placeholder="Hora"
+      />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 hover:text-destructive"
+        onClick={() => onDelete(slot.id)}
+        title="Apagar"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

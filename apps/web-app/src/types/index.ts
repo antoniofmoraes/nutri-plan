@@ -96,6 +96,20 @@ export interface ShoppingList {
   updatedAt: string;
 }
 
+export interface PresetMealFood {
+  id?: string;
+  food: Food;
+  quantity: number;
+}
+
+export interface PresetMeal {
+  id: string;
+  name: string;
+  foods: PresetMealFood[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ShoppingListSummary {
   id: string;
   name: string;

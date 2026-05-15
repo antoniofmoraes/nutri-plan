@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { MealPlan, Food, Meal, WeekDay, DayPlan, MacroSummary } from '@/types';
+import { MealPlan, Food, Meal, WeekDay, DayPlan, MacroSummary, PresetMeal } from '@/types';
 import { mealPlanService } from '@/services/mealPlanService';
 import { foodService } from '@/services/foodService';
+import { presetMealService } from '@/services/presetMealService';
 import { useAuth } from './AuthContext';
 
 interface PlanInput {
@@ -35,6 +36,7 @@ interface SlotUpdate {
 interface MealPlanContextType {
   mealPlans: MealPlan[];
   foods: Food[];
+  presetMeals: PresetMeal[];
   activePlanId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -56,6 +58,13 @@ interface MealPlanContextType {
   updateMealFood: (planId: string, mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => Promise<void>;
   setMealCheat: (planId: string, mealId: string, isCheat: boolean) => Promise<void>;
   copyMeal: (planId: string, sourceMealId: string, targetMealIds: string[]) => Promise<void>;
+  addPresetMeal: (name: string) => Promise<void>;
+  updatePresetMeal: (id: string, name: string) => Promise<void>;
+  deletePresetMeal: (id: string) => Promise<void>;
+  addFoodToPreset: (presetId: string, food: Food, quantity: number) => Promise<void>;
+  updatePresetFood: (presetId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => Promise<void>;
+  removeFoodFromPreset: (presetId: string, foodId: string) => Promise<void>;
+  applyPreset: (planId: string, presetId: string, targetMealIds: string[]) => Promise<void>;
   calculateMealMacros: (meal: Meal, plan?: MealPlan) => MacroSummary;
   calculateRawMealMacros: (meal: Meal) => MacroSummary;
   calculateDayMacros: (dayPlan: DayPlan, plan?: MealPlan) => MacroSummary;
@@ -68,6 +77,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [foods, setFoods] = useState<Food[]>([]);
+  const [presetMeals, setPresetMeals] = useState<PresetMeal[]>([]);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +88,14 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const [plansData, foodsPage] = await Promise.all([
+      const [plansData, foodsPage, presetsData] = await Promise.all([
         mealPlanService.getAll(),
         foodService.getAll({ pageSize: 10000 }),
+        presetMealService.getAll(),
       ]);
       setMealPlans(plansData);
       setFoods(foodsPage.items);
+      setPresetMeals(presetsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
     } finally {
@@ -106,6 +118,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     } else {
       setMealPlans([]);
       setFoods([]);
+      setPresetMeals([]);
     }
   }, [isAuthenticated, refreshData]);
 
@@ -181,6 +194,46 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
 
   const copyMeal = async (planId: string, sourceMealId: string, targetMealIds: string[]) => {
     await mealPlanService.copyMeal(sourceMealId, targetMealIds);
+    await refreshPlan(planId);
+  };
+
+  const refreshPresets = async () => {
+    const data = await presetMealService.getAll();
+    setPresetMeals(data);
+  };
+
+  const addPresetMeal = async (name: string) => {
+    const created = await presetMealService.create(name);
+    setPresetMeals(prev => [...prev, created]);
+  };
+
+  const updatePresetMeal = async (id: string, name: string) => {
+    const updated = await presetMealService.update(id, name);
+    setPresetMeals(prev => prev.map(p => p.id === id ? updated : p));
+  };
+
+  const deletePresetMeal = async (id: string) => {
+    await presetMealService.delete(id);
+    setPresetMeals(prev => prev.filter(p => p.id !== id));
+  };
+
+  const addFoodToPreset = async (presetId: string, food: Food, quantity: number) => {
+    await presetMealService.addFood(presetId, food.id, quantity);
+    await refreshPresets();
+  };
+
+  const updatePresetFood = async (presetId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => {
+    await presetMealService.updateFood(presetId, foodId, updates);
+    await refreshPresets();
+  };
+
+  const removeFoodFromPreset = async (presetId: string, foodId: string) => {
+    await presetMealService.removeFood(presetId, foodId);
+    await refreshPresets();
+  };
+
+  const applyPreset = async (planId: string, presetId: string, targetMealIds: string[]) => {
+    await presetMealService.apply(presetId, targetMealIds);
     await refreshPlan(planId);
   };
 
@@ -282,6 +335,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
       value={{
         mealPlans,
         foods,
+        presetMeals,
         activePlanId,
         isLoading,
         error,
@@ -303,6 +357,13 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         updateMealFood,
         setMealCheat,
         copyMeal,
+        addPresetMeal,
+        updatePresetMeal,
+        deletePresetMeal,
+        addFoodToPreset,
+        updatePresetFood,
+        removeFoodFromPreset,
+        applyPreset,
         calculateMealMacros,
         calculateRawMealMacros,
         calculateDayMacros,

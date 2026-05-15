@@ -99,6 +99,7 @@ builder.Services.AddScoped<MealSlotService>();
 builder.Services.AddScoped<MealService>();
 builder.Services.AddScoped<MealFoodService>();
 builder.Services.AddScoped<ShoppingListService>();
+builder.Services.AddScoped<PresetMealService>();
 
 // JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -303,6 +304,45 @@ shoppingLists.MapDelete("/{id:guid}/members/{memberUserId:guid}", async (Guid id
 {
     await svc.RemoveMemberAsync(id, GetUserId(ctx), memberUserId);
     return Results.Json(new ApiResponse(true, Message: "Membro removido"));
+});
+
+// ─── Preset Meals ────────────────────────────────────────
+var presetMeals = app.MapGroup("/api/preset-meals").RequireAuthorization();
+
+presetMeals.MapGet("/", async (HttpContext ctx, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetAllByUserAsync(GetUserId(ctx)))));
+
+presetMeals.MapGet("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id, GetUserId(ctx)))));
+
+presetMeals.MapPost("/", async (HttpContext ctx, CreatePresetMealRequest request, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request)), statusCode: 201));
+
+presetMeals.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdatePresetMealRequest request, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request))));
+
+presetMeals.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc) =>
+{
+    await svc.DeleteAsync(id, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Refeição pronta excluída com sucesso"));
+});
+
+presetMeals.MapPost("/{id:guid}/foods", async (Guid id, HttpContext ctx, AddPresetMealFoodRequest request, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.AddFoodAsync(id, GetUserId(ctx), request)), statusCode: 201));
+
+presetMeals.MapPatch("/{id:guid}/foods/{foodId:guid}", async (Guid id, Guid foodId, HttpContext ctx, UpdatePresetMealFoodRequest request, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateFoodAsync(id, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity))));
+
+presetMeals.MapDelete("/{id:guid}/foods/{foodId:guid}", async (Guid id, Guid foodId, HttpContext ctx, PresetMealService svc) =>
+{
+    await svc.RemoveFoodAsync(id, foodId, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Alimento removido da refeição pronta"));
+});
+
+presetMeals.MapPost("/{id:guid}/apply", async (Guid id, HttpContext ctx, ApplyPresetRequest request, PresetMealService svc) =>
+{
+    await svc.ApplyAsync(id, GetUserId(ctx), request.TargetMealIds);
+    return Results.Json(new ApiResponse(true, Message: "Refeição pronta aplicada"));
 });
 
 // ─── 404 Fallback ─────────────────────────────────────────

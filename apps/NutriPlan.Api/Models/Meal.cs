@@ -17,6 +17,9 @@ public class Meal
     [JsonIgnore]
     public MealSlot MealSlot { get; set; } = null!;
 
+    [Column("isCheat")]
+    public bool IsCheat { get; set; }
+
     [Column("dayPlanId")]
     public Guid DayPlanId { get; set; }
 

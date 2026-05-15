@@ -52,8 +52,10 @@ interface MealPlanContextType {
   deleteSlot: (planId: string, slotId: string) => Promise<void>;
   addFoodToMeal: (planId: string, mealId: string, food: Food, quantity: number) => Promise<void>;
   removeFoodFromMeal: (planId: string, mealId: string, foodId: string) => Promise<void>;
-  calculateMealMacros: (meal: Meal) => MacroSummary;
-  calculateDayMacros: (dayPlan: DayPlan) => MacroSummary;
+  setMealCheat: (planId: string, mealId: string, isCheat: boolean) => Promise<void>;
+  calculateMealMacros: (meal: Meal, plan?: MealPlan) => MacroSummary;
+  calculateRawMealMacros: (meal: Meal) => MacroSummary;
+  calculateDayMacros: (dayPlan: DayPlan, plan?: MealPlan) => MacroSummary;
   calculatePlanMacros: (plan: MealPlan) => MacroSummary;
 }
 
@@ -159,7 +161,13 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     await refreshPlan(planId);
   };
 
-  const calculateMealMacros = (meal: Meal): MacroSummary => {
+  const setMealCheat = async (planId: string, mealId: string, isCheat: boolean) => {
+    await mealPlanService.setMealCheat(mealId, isCheat);
+    await refreshPlan(planId);
+  };
+
+  // Raw macros — what this meal's foods actually total
+  const calculateRawMealMacros = (meal: Meal): MacroSummary => {
     return meal.foods.reduce(
       (acc, { food, quantity }) => ({
         calories: acc.calories + (food.calories * quantity) / 100,
@@ -171,10 +179,51 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const calculateDayMacros = (dayPlan: DayPlan): MacroSummary => {
+  // Slot averages: for each slot, the average of non-free meals' macros
+  const buildSlotAverages = (plan: MealPlan): Map<string, MacroSummary> => {
+    const grouped = new Map<string, { sum: MacroSummary; count: number }>();
+    for (const day of plan.days) {
+      for (const meal of day.meals) {
+        if (meal.isCheat) continue;
+        const macros = calculateRawMealMacros(meal);
+        const entry = grouped.get(meal.slotId) ?? { sum: { calories: 0, protein: 0, carbs: 0, fat: 0 }, count: 0 };
+        entry.sum.calories += macros.calories;
+        entry.sum.protein += macros.protein;
+        entry.sum.carbs += macros.carbs;
+        entry.sum.fat += macros.fat;
+        entry.count += 1;
+        grouped.set(meal.slotId, entry);
+      }
+    }
+    const averages = new Map<string, MacroSummary>();
+    for (const [slotId, { sum, count }] of grouped) {
+      averages.set(slotId, {
+        calories: count > 0 ? sum.calories / count : 0,
+        protein: count > 0 ? sum.protein / count : 0,
+        carbs: count > 0 ? sum.carbs / count : 0,
+        fat: count > 0 ? sum.fat / count : 0,
+      });
+    }
+    return averages;
+  };
+
+  // Effective macros: substitutes slot average for free meals (when plan provided)
+  const calculateMealMacros = (meal: Meal, plan?: MealPlan): MacroSummary => {
+    if (meal.isCheat && plan) {
+      const averages = buildSlotAverages(plan);
+      return averages.get(meal.slotId) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    }
+    return calculateRawMealMacros(meal);
+  };
+
+  // Day total: sums each meal, substituting free meals with slot averages
+  const calculateDayMacros = (dayPlan: DayPlan, plan?: MealPlan): MacroSummary => {
+    const averages = plan ? buildSlotAverages(plan) : null;
     return dayPlan.meals.reduce(
       (acc, meal) => {
-        const mealMacros = calculateMealMacros(meal);
+        const mealMacros = meal.isCheat && averages
+          ? averages.get(meal.slotId) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
+          : calculateRawMealMacros(meal);
         return {
           calories: acc.calories + mealMacros.calories,
           protein: acc.protein + mealMacros.protein,
@@ -186,16 +235,19 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // Plan-level daily average: excludes free meals entirely
   const calculatePlanMacros = (plan: MealPlan): MacroSummary => {
     const total = plan.days.reduce(
       (acc, day) => {
-        const dayMacros = calculateDayMacros(day);
-        return {
-          calories: acc.calories + dayMacros.calories,
-          protein: acc.protein + dayMacros.protein,
-          carbs: acc.carbs + dayMacros.carbs,
-          fat: acc.fat + dayMacros.fat,
-        };
+        for (const meal of day.meals) {
+          if (meal.isCheat) continue;
+          const macros = calculateRawMealMacros(meal);
+          acc.calories += macros.calories;
+          acc.protein += macros.protein;
+          acc.carbs += macros.carbs;
+          acc.fat += macros.fat;
+        }
+        return acc;
       },
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
@@ -229,7 +281,9 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         deleteSlot,
         addFoodToMeal,
         removeFoodFromMeal,
+        setMealCheat,
         calculateMealMacros,
+        calculateRawMealMacros,
         calculateDayMacros,
         calculatePlanMacros,
       }}

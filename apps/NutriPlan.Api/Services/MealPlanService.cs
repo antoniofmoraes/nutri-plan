@@ -113,6 +113,7 @@ public class MealPlanService(AppDbContext db)
                     m.MealSlotId,
                     m.MealSlot.Name,
                     m.MealSlot.Time,
+                    m.IsCheat,
                     m.Foods.Select(mf => new MealFoodResponse(
                         mf.Id,
                         mf.Quantity,

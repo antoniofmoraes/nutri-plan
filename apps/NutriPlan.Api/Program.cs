@@ -224,8 +224,11 @@ mealPlans.MapDelete("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Gu
 mealPlans.MapGet("/{planId:guid}/days/{day}/meals", async (Guid planId, string day, HttpContext ctx, MealService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMealsForDayAsync(planId, day, GetUserId(ctx)))));
 
-// ─── Meal Foods ───────────────────────────────────────────
+// ─── Meal Foods + Meal Toggle ────────────────────────────
 var meals = app.MapGroup("/api/meals").RequireAuthorization();
+
+meals.MapPatch("/{mealId:guid}/cheat", async (Guid mealId, HttpContext ctx, UpdateMealCheatRequest request, MealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.SetCheatAsync(mealId, GetUserId(ctx), request.IsCheat))));
 
 meals.MapGet("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, MealFoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMealFoodsAsync(mealId, GetUserId(ctx)))));

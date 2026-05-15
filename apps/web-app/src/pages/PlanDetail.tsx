@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Clock, X, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Clock, X, Search, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -32,6 +32,7 @@ export default function PlanDetail() {
     deleteSlot,
     addFoodToMeal,
     removeFoodFromMeal,
+    setMealCheat,
     calculateMealMacros,
     calculateDayMacros,
   } = useMealPlan();
@@ -71,7 +72,15 @@ export default function PlanDetail() {
   }
 
   const dayPlan = plan.days.find((d) => d.day === selectedDay);
-  const dayMacros = dayPlan ? calculateDayMacros(dayPlan) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  const dayMacros = dayPlan ? calculateDayMacros(dayPlan, plan) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+  const handleToggleCheat = async (mealId: string, currentlyCheat: boolean) => {
+    try {
+      await setMealCheat(plan.id, mealId, !currentlyCheat);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao atualizar');
+    }
+  };
 
   const handleOpenSlotDialog = (slot?: MealSlot) => {
     if (slot) {
@@ -225,71 +234,90 @@ export default function PlanDetail() {
               ) : (
                 <div className="space-y-4">
                   {currentDayPlan.meals.map((meal) => {
-                    const macros = calculateMealMacros(meal);
+                    const macros = calculateMealMacros(meal, plan);
                     return (
-                      <Card key={meal.id}>
+                      <Card key={meal.id} className={meal.isCheat ? 'border-accent/40 bg-accent/5' : ''}>
                         <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <CardTitle className="text-base font-display">{meal.name}</CardTitle>
                               {meal.time && (
                                 <span className="text-xs text-muted-foreground">• {meal.time}</span>
                               )}
+                              {meal.isCheat && (
+                                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <Sparkles className="h-3 w-3" />
+                                  Livre
+                                </span>
+                              )}
                             </div>
+                            <Button
+                              variant={meal.isCheat ? "default" : "ghost"}
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleToggleCheat(meal.id, meal.isCheat)}
+                            >
+                              {meal.isCheat ? 'Cancelar livre' : 'Marcar livre'}
+                            </Button>
                           </div>
                           <div className="flex gap-3 text-xs text-muted-foreground">
                             <span className="text-accent font-medium">{macros.calories.toFixed(0)} kcal</span>
                             <span>P: {macros.protein.toFixed(0)}g</span>
                             <span>C: {macros.carbs.toFixed(0)}g</span>
                             <span>G: {macros.fat.toFixed(0)}g</span>
+                            {meal.isCheat && (
+                              <span className="italic">(estimado pela média)</span>
+                            )}
                           </div>
                         </CardHeader>
-                        <CardContent>
-                          {meal.foods.length === 0 ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-dashed"
-                              onClick={() => handleOpenFoodDialog(meal.id)}
-                            >
-                              <Plus className="mr-1 h-3 w-3" />
-                              Adicionar alimento
-                            </Button>
-                          ) : (
-                            <div className="space-y-2">
-                              {meal.foods.map(({ food, quantity }, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm"
-                                >
-                                  <div>
-                                    <span className="font-medium">{food.name}</span>
-                                    <span className="ml-2 text-muted-foreground">
-                                      {quantity}g
-                                    </span>
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 hover:text-destructive"
-                                    onClick={() => handleRemoveFood(meal.id, food.id)}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ))}
+                        {!meal.isCheat && (
+                          <CardContent>
+                            {meal.foods.length === 0 ? (
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="w-full"
+                                className="w-full border-dashed"
                                 onClick={() => handleOpenFoodDialog(meal.id)}
                               >
                                 <Plus className="mr-1 h-3 w-3" />
-                                Mais
+                                Adicionar alimento
                               </Button>
-                            </div>
-                          )}
-                        </CardContent>
+                            ) : (
+                              <div className="space-y-2">
+                                {meal.foods.map(({ food, quantity }, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm"
+                                  >
+                                    <div>
+                                      <span className="font-medium">{food.name}</span>
+                                      <span className="ml-2 text-muted-foreground">
+                                        {quantity}g
+                                      </span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 hover:text-destructive"
+                                      onClick={() => handleRemoveFood(meal.id, food.id)}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => handleOpenFoodDialog(meal.id)}
+                                >
+                                  <Plus className="mr-1 h-3 w-3" />
+                                  Mais
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        )}
                       </Card>
                     );
                   })}

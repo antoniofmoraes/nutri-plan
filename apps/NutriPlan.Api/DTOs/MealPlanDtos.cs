@@ -91,6 +91,11 @@ public record MealSlotResponse(Guid Id, string Name, string? Time, int SortOrder
 
 public record DayPlanResponse(string Day, List<MealResponse> Meals);
 
-public record MealResponse(Guid Id, Guid SlotId, string Name, string? Time, List<MealFoodResponse> Foods);
+public record MealResponse(Guid Id, Guid SlotId, string Name, string? Time, bool IsCheat, List<MealFoodResponse> Foods);
+
+public record UpdateMealCheatRequest
+{
+    public bool IsCheat { get; init; }
+}
 
 public record MealFoodResponse(Guid Id, double Quantity, FoodResponse Food);

@@ -12,6 +12,7 @@ interface ApiMeal {
   slotId: string;
   name: string;
   time?: string;
+  isCheat: boolean;
   foods: ApiMealFood[];
 }
 
@@ -58,6 +59,7 @@ function transformMealPlan(apiPlan: ApiMealPlan): MealPlan {
         slotId: meal.slotId,
         name: meal.name,
         time: meal.time,
+        isCheat: meal.isCheat,
         foods: meal.foods.map((mf) => ({
           id: mf.id,
           food: mf.food,
@@ -139,6 +141,10 @@ export const mealPlanService = {
 
   async deleteSlot(planId: string, slotId: string): Promise<void> {
     await api.delete(`/api/meal-plans/${planId}/slots/${slotId}`);
+  },
+
+  async setMealCheat(mealId: string, isCheat: boolean): Promise<void> {
+    await api.patch(`/api/meals/${mealId}/cheat`, { isCheat });
   },
 
   // Meal food operations

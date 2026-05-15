@@ -1,5 +1,5 @@
 import { Meal, MacroSummary } from '@/types';
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MealCardProps {
@@ -14,7 +14,8 @@ export function MealCard({ meal, macros, onClick }: MealCardProps) {
       onClick={onClick}
       className={cn(
         'group relative overflow-hidden rounded-xl bg-card p-4 shadow-soft transition-all duration-300 hover:shadow-medium',
-        onClick && 'cursor-pointer hover:-translate-y-0.5'
+        onClick && 'cursor-pointer hover:-translate-y-0.5',
+        meal.isCheat && 'border border-accent/40 bg-accent/5'
       )}
     >
       <div className="flex items-center justify-between">
@@ -23,7 +24,15 @@ export function MealCard({ meal, macros, onClick }: MealCardProps) {
             <Clock className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h4 className="font-semibold text-foreground">{meal.name}</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-foreground">{meal.name}</h4>
+              {meal.isCheat && (
+                <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Livre
+                </span>
+              )}
+            </div>
             {meal.time && (
               <p className="text-xs text-muted-foreground">{meal.time}</p>
             )}
@@ -49,7 +58,13 @@ export function MealCard({ meal, macros, onClick }: MealCardProps) {
         </span>
       </div>
 
-      {meal.foods.length > 0 && (
+      {meal.isCheat && (
+        <p className="mt-2 text-xs text-muted-foreground italic">
+          Macros estimados pela média do plano
+        </p>
+      )}
+
+      {!meal.isCheat && meal.foods.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
           {meal.foods.slice(0, 3).map(({ food }, idx) => (
             <span

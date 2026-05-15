@@ -33,6 +33,7 @@ export interface Meal {
   slotId: string;
   name: string;
   time?: string;
+  isCheat: boolean;
   foods: MealFood[];
 }
 

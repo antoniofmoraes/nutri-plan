@@ -38,8 +38,8 @@ export default function Dashboard() {
 
   const dayMacros = useMemo(() => {
     if (!dayPlan) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
-    return calculateDayMacros(dayPlan);
-  }, [dayPlan, calculateDayMacros]);
+    return calculateDayMacros(dayPlan, selectedPlan);
+  }, [dayPlan, selectedPlan, calculateDayMacros]);
 
   const todayLabel = weekDays.find(d => d.value === selectedDay)?.label || '';
 
@@ -165,7 +165,7 @@ export default function Dashboard() {
                           <MealCard
                             key={meal.id}
                             meal={meal}
-                            macros={calculateMealMacros(meal)}
+                            macros={calculateMealMacros(meal, selectedPlan)}
                           />
                         ))}
                       </div>

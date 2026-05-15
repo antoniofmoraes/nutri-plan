@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace NutriPlan.Api.Models;
 
-[Table("users")]
-public class User
+[Table("preset_meals")]
+public class PresetMeal
 {
     [Key]
     [Column("id")]
@@ -13,14 +14,11 @@ public class User
     [Column("name")]
     public required string Name { get; set; }
 
-    [Column("email")]
-    public required string Email { get; set; }
+    [Column("userId")]
+    public Guid UserId { get; set; }
 
-    [Column("password")]
-    public required string Password { get; set; }
-
-    [Column("googleId")]
-    public string? GoogleId { get; set; }
+    [JsonIgnore]
+    public User User { get; set; } = null!;
 
     [Column("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -28,6 +26,5 @@ public class User
     [Column("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<MealPlan> MealPlans { get; set; } = [];
-    public ICollection<PresetMeal> PresetMeals { get; set; } = [];
+    public ICollection<PresetMealFood> Foods { get; set; } = [];
 }

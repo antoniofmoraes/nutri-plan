@@ -15,6 +15,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ShoppingList> ShoppingLists => Set<ShoppingList>();
     public DbSet<ShoppingListMember> ShoppingListMembers => Set<ShoppingListMember>();
     public DbSet<ShoppingListMeal> ShoppingListMeals => Set<ShoppingListMeal>();
+    public DbSet<PresetMeal> PresetMeals => Set<PresetMeal>();
+    public DbSet<PresetMealFood> PresetMealFoods => Set<PresetMealFood>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,6 +111,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(mf => mf.FoodId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<PresetMeal>(entity =>
+        {
+            entity.HasOne(pm => pm.User)
+                .WithMany(u => u.PresetMeals)
+                .HasForeignKey(pm => pm.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PresetMealFood>(entity =>
+        {
+            entity.HasIndex(pmf => new { pmf.PresetMealId, pmf.FoodId }).IsUnique();
+            entity.HasOne(pmf => pmf.PresetMeal)
+                .WithMany(pm => pm.Foods)
+                .HasForeignKey(pmf => pmf.PresetMealId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(pmf => pmf.Food)
+                .WithMany(f => f.PresetMealFoods)
+                .HasForeignKey(pmf => pmf.FoodId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public override int SaveChanges()
@@ -147,6 +170,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 list.UpdatedAt = DateTime.UtcNow;
                 if (entry.State == EntityState.Added)
                     list.CreatedAt = DateTime.UtcNow;
+            }
+            else if (entry.Entity is PresetMeal preset)
+            {
+                preset.UpdatedAt = DateTime.UtcNow;
+                if (entry.State == EntityState.Added)
+                    preset.CreatedAt = DateTime.UtcNow;
             }
         }
     }

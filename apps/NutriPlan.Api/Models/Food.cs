@@ -32,4 +32,5 @@ public class Food
     public string Portion { get; set; } = "100g";
 
     public ICollection<MealFood> MealFoods { get; set; } = [];
+    public ICollection<PresetMealFood> PresetMealFoods { get; set; } = [];
 }

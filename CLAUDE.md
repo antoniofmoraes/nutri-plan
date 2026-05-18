@@ -260,12 +260,13 @@ Atualmente o deploy é **push-based**: Coolify observa o repo, faz `git pull` no
 - Healthcheck: `GET /` e `/health` no backend.
 - Env vars injetadas pelo Coolify (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `VITE_API_URL`).
 
-### 9.2 Pipeline GitHub Actions recomendado (ainda não existe)
+### 9.2 Pipeline GitHub Actions
 
-Crie `.github/workflows/ci.yml` quando for adicionar CI. Estrutura mínima:
+CI vive em `.github/workflows/ci.yml`. Dois jobs paralelos (`api` e `web`), ambos com cache. Triggers: `pull_request` (qualquer alvo) + `push` em `main`/`dev`.
 
 ```yaml
 name: ci
+
 on:
   pull_request:
   push:
@@ -274,29 +275,47 @@ on:
 jobs:
   api:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/NutriPlan.Api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
-        with: { dotnet-version: '10.0.x', include-prerelease: true }
-      - run: dotnet restore apps/NutriPlan.Api
-      - run: dotnet build apps/NutriPlan.Api --no-restore -c Release
-      # - run: dotnet test (quando houver testes)
+        with:
+          dotnet-version: '10.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('apps/NutriPlan.Api/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      # - run: dotnet test --no-build -c Release (quando houver testes)
 
   web:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web-app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/web-app/package-lock.json
       - run: npm ci
-        working-directory: apps/web-app
       - run: npm run lint
-        working-directory: apps/web-app
       - run: npm test
-        working-directory: apps/web-app
       - run: npm run build
-        working-directory: apps/web-app
 ```
+
+Notas:
+- **.NET 10 está GA** — não precisa de `include-prerelease`.
+- **Cache NuGet** usa hash dos `.csproj`. Para chave mais precisa, ativar `RestorePackagesWithLockFile` e cachear por `packages.lock.json`.
+- **Cache npm** é o nativo do `setup-node` (mais correto que cachear `node_modules` direto).
 
 **Diretivas**:
 - CI **bloqueia merge em `main`** apenas se quebrar build/test/lint. Não adicionar gates pesados (coverage threshold, SAST, etc.) sem combinar.

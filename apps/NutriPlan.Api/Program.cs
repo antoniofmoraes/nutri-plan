@@ -160,6 +160,9 @@ users.MapGet("/me", async (HttpContext ctx, UserService svc) =>
 users.MapPatch("/me", async (HttpContext ctx, UpdateUserRequest request, UserService svc) =>
     Results.Json(ApiResponses.Ok(await svc.UpdateUserAsync(GetUserId(ctx), request))));
 
+users.MapPut("/me/main-plan", async (HttpContext ctx, SetMainPlanRequest request, UserService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.SetMainPlanAsync(GetUserId(ctx), request.PlanId))));
+
 users.MapDelete("/me", async (HttpContext ctx, UserService svc) =>
 {
     await svc.DeleteUserAsync(GetUserId(ctx));

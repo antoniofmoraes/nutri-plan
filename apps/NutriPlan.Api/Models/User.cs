@@ -28,6 +28,11 @@ public class User
     [Column("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("mainMealPlanId")]
+    public Guid? MainMealPlanId { get; set; }
+
+    public MealPlan? MainMealPlan { get; set; }
+
     public ICollection<MealPlan> MealPlans { get; set; } = [];
     public ICollection<PresetMeal> PresetMeals { get; set; } = [];
 }

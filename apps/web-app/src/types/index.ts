@@ -2,6 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  mainMealPlanId?: string | null;
 }
 
 export interface Food {
@@ -54,6 +55,7 @@ export interface MealPlan {
   dailyProtein?: number | null;
   dailyCarbs?: number | null;
   dailyFat?: number | null;
+  isMain: boolean;
   slots: MealSlot[];
   days: DayPlan[];
   createdAt: Date;

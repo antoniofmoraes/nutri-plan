@@ -30,7 +30,8 @@ function getTodayWeekDay(): WeekDay {
 export default function Dashboard() {
   const { user } = useAuth();
   const { mealPlans, calculateDayMacros, calculateMealMacros } = useMealPlan();
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(mealPlans[0]?.id || '');
+  const mainPlan = mealPlans.find(p => p.isMain);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(mainPlan?.id || mealPlans[0]?.id || '');
   const [selectedDay, setSelectedDay] = useState<WeekDay>(getTodayWeekDay());
 
   const selectedPlan = mealPlans.find(p => p.id === selectedPlanId);

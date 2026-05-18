@@ -69,6 +69,7 @@ interface MealPlanContextType {
   calculateRawMealMacros: (meal: Meal) => MacroSummary;
   calculateDayMacros: (dayPlan: DayPlan, plan?: MealPlan) => MacroSummary;
   calculatePlanMacros: (plan: MealPlan) => MacroSummary;
+  setMainPlan: (planId: string | null) => Promise<void>;
 }
 
 const MealPlanContext = createContext<MealPlanContextType | undefined>(undefined);
@@ -135,6 +136,11 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
   const deleteMealPlan = async (id: string) => {
     await mealPlanService.delete(id);
     setMealPlans(prev => prev.filter(p => p.id !== id));
+  };
+
+  const setMainPlan = async (planId: string | null) => {
+    await mealPlanService.setMainPlan(planId);
+    setMealPlans(prev => prev.map(p => ({ ...p, isMain: p.id === planId })));
   };
 
   const addFood = async (food: Omit<Food, 'id'>) => {
@@ -345,6 +351,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         addMealPlan,
         updateMealPlan,
         deleteMealPlan,
+        setMainPlan,
         addFood,
         updateFood,
         deleteFood,

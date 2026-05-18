@@ -10,3 +10,8 @@ public record UpdateUserRequest
     [EmailAddress(ErrorMessage = "Email inválido")]
     public string? Email { get; init; }
 }
+
+public record SetMainPlanRequest
+{
+    public Guid? PlanId { get; init; }
+}

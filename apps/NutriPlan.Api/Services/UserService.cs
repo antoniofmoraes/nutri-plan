@@ -13,7 +13,7 @@ public class UserService(AppDbContext db)
         if (user is null)
             throw new ApiException("Usuário não encontrado", 404);
 
-        return new UserWithDateDto(user.Id, user.Name, user.Email, user.CreatedAt);
+        return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.CreatedAt);
     }
 
     public async Task<UserWithDateDto> UpdateUserAsync(Guid userId, UpdateUserRequest request)
@@ -34,7 +34,26 @@ public class UserService(AppDbContext db)
             user.Name = request.Name;
 
         await db.SaveChangesAsync();
-        return new UserWithDateDto(user.Id, user.Name, user.Email, user.CreatedAt);
+        return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.CreatedAt);
+    }
+
+    public async Task<UserWithDateDto> SetMainPlanAsync(Guid userId, Guid? planId)
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null)
+            throw new ApiException("Usuário não encontrado", 404);
+
+        if (planId.HasValue)
+        {
+            var plan = await db.MealPlans.FirstOrDefaultAsync(mp => mp.Id == planId.Value && mp.UserId == userId);
+            if (plan is null)
+                throw new ApiException("Plano alimentar não encontrado", 404);
+        }
+
+        user.MainMealPlanId = planId;
+        await db.SaveChangesAsync();
+
+        return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.CreatedAt);
     }
 
     public async Task DeleteUserAsync(Guid userId)

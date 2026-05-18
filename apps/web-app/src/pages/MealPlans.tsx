@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, ChevronRight, Target } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronRight, Target, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -24,7 +24,7 @@ const goalColors: Record<PlanGoal, string> = {
 };
 
 export default function MealPlans() {
-  const { mealPlans, addMealPlan, updateMealPlan, deleteMealPlan, calculatePlanMacros } = useMealPlan();
+  const { mealPlans, addMealPlan, updateMealPlan, deleteMealPlan, setMainPlan, calculatePlanMacros } = useMealPlan();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MealPlan | null>(null);
@@ -225,12 +225,28 @@ export default function MealPlans() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="font-display text-lg">{plan.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="font-display text-lg">{plan.name}</CardTitle>
+                        {plan.isMain && (
+                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        )}
+                      </div>
                       <span className={cn('mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium', goalColors[plan.goal])}>
                         {goalLabels[plan.goal]}
                       </span>
                     </div>
                     <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={plan.isMain ? 'Remover como principal' : 'Definir como principal'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMainPlan(plan.isMain ? null : plan.id);
+                        }}
+                      >
+                        <Star className={cn('h-4 w-4', plan.isMain ? 'fill-amber-400 text-amber-400' : '')} />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

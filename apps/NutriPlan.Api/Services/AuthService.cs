@@ -29,7 +29,7 @@ public class AuthService(AppDbContext db, IConfiguration config)
         await db.SaveChangesAsync();
 
         var token = GenerateToken(user);
-        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email), token);
+        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -39,7 +39,7 @@ public class AuthService(AppDbContext db, IConfiguration config)
             throw new ApiException("Credenciais inválidas", 401);
 
         var token = GenerateToken(user);
-        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email), token);
+        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
     }
 
     public async Task<UserWithDateDto> GetMeAsync(Guid userId)
@@ -48,7 +48,7 @@ public class AuthService(AppDbContext db, IConfiguration config)
         if (user is null)
             throw new ApiException("Usuário não encontrado", 404);
 
-        return new UserWithDateDto(user.Id, user.Name, user.Email, user.CreatedAt);
+        return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.CreatedAt);
     }
 
     private string GenerateToken(User user)

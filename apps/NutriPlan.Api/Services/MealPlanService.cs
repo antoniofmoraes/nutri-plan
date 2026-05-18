@@ -12,12 +12,16 @@ public class MealPlanService(AppDbContext db)
 
     public async Task<List<MealPlanResponse>> GetAllByUserAsync(Guid userId)
     {
+        var user = await db.Users.FindAsync(userId);
+        var mainPlanId = user?.MainMealPlanId;
+
         var plans = await GetPlansQuery()
             .Where(mp => mp.UserId == userId)
-            .OrderByDescending(mp => mp.CreatedAt)
+            .OrderByDescending(mp => mp.Id == mainPlanId)
+            .ThenByDescending(mp => mp.CreatedAt)
             .ToListAsync();
 
-        return plans.Select(ToResponse).ToList();
+        return plans.Select(p => ToResponse(p, mainPlanId)).ToList();
     }
 
     public async Task<MealPlanResponse> GetByIdAsync(Guid id, Guid userId)
@@ -28,7 +32,8 @@ public class MealPlanService(AppDbContext db)
         if (plan.UserId != userId)
             throw new ApiException("Acesso negado", 403);
 
-        return ToResponse(plan);
+        var user = await db.Users.FindAsync(userId);
+        return ToResponse(plan, user?.MainMealPlanId);
     }
 
     public async Task<MealPlanResponse> CreateAsync(Guid userId, CreateMealPlanRequest request)
@@ -48,8 +53,9 @@ public class MealPlanService(AppDbContext db)
         db.MealPlans.Add(plan);
         await db.SaveChangesAsync();
 
+        var user = await db.Users.FindAsync(userId);
         var created = await GetPlansQuery().FirstAsync(mp => mp.Id == plan.Id);
-        return ToResponse(created);
+        return ToResponse(created, user?.MainMealPlanId);
     }
 
     public async Task<MealPlanResponse> UpdateAsync(Guid id, Guid userId, UpdateMealPlanRequest request)
@@ -68,7 +74,8 @@ public class MealPlanService(AppDbContext db)
         if (request.DailyFat.HasValue) plan.DailyFat = request.DailyFat;
 
         await db.SaveChangesAsync();
-        return ToResponse(plan);
+        var user = await db.Users.FindAsync(userId);
+        return ToResponse(plan, user?.MainMealPlanId);
     }
 
     public async Task DeleteAsync(Guid id, Guid userId)
@@ -94,7 +101,7 @@ public class MealPlanService(AppDbContext db)
                     .ThenInclude(m => m.Foods)
                         .ThenInclude(mf => mf.Food);
 
-    public static MealPlanResponse ToResponse(MealPlan plan)
+    public static MealPlanResponse ToResponse(MealPlan plan, Guid? mainPlanId = null)
     {
         var orderedDays = plan.Days.OrderBy(d => Array.IndexOf(WeekDays, d.Day)).ToList();
         return new MealPlanResponse(
@@ -105,6 +112,7 @@ public class MealPlanService(AppDbContext db)
             plan.DailyProtein,
             plan.DailyCarbs,
             plan.DailyFat,
+            plan.Id == mainPlanId,
             plan.Slots.OrderBy(s => s.SortOrder).Select(s => new MealSlotResponse(s.Id, s.Name, s.Time, s.SortOrder)).ToList(),
             orderedDays.Select(d => new DayPlanResponse(
                 d.Day,

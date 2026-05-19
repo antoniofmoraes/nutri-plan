@@ -46,7 +46,7 @@ export function SlotsManagerDialog({ open, onOpenChange, slots, onAdd, onUpdate,
         <div className="space-y-4 py-2">
           <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
             <Label className="text-xs">Nova refeição</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 placeholder="Nome (ex: Café da manhã)"
                 value={newName}
@@ -54,16 +54,23 @@ export function SlotsManagerDialog({ open, onOpenChange, slots, onAdd, onUpdate,
                 className="flex-1"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
               />
-              <Input
-                placeholder="Hora"
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                className="w-24"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-              />
-              <Button onClick={handleAdd} disabled={!newName.trim() || adding} className="bg-gradient-primary">
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Hora"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="flex-1 sm:w-24 sm:flex-none"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+                />
+                <Button
+                  onClick={handleAdd}
+                  disabled={!newName.trim() || adding}
+                  className="bg-gradient-primary h-11 w-11 sm:h-10 sm:w-10 p-0 flex-shrink-0"
+                  aria-label="Adicionar"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -126,52 +133,54 @@ function SlotEditRow({ slot, isFirst, isLast, onMove, onUpdate, onDelete }: Slot
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border p-1.5">
-      <div className="flex flex-col">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5"
-          disabled={isFirst}
-          onClick={() => onMove(slot.id, -1)}
-          title="Mover para cima"
-        >
-          <ChevronUp className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5"
-          disabled={isLast}
-          onClick={() => onMove(slot.id, 1)}
-          title="Mover para baixo"
-        >
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </div>
+    <div className="flex flex-col gap-2 rounded-lg border p-2 sm:flex-row sm:items-center sm:gap-1 sm:p-1.5">
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={commitChanges}
-        className="h-8 flex-1"
+        className="h-10 sm:h-8 sm:flex-1"
         placeholder="Nome"
       />
-      <Input
-        value={time}
-        onChange={(e) => setTime(e.target.value)}
-        onBlur={commitChanges}
-        className="h-8 w-20"
-        placeholder="Hora"
-      />
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 hover:text-destructive"
-        onClick={() => onDelete(slot.id)}
-        title="Apagar"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-2 sm:gap-1">
+        <Input
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          onBlur={commitChanges}
+          className="h-10 w-24 sm:h-8 sm:w-20"
+          placeholder="Hora"
+        />
+        <div className="flex flex-col">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-8 sm:w-5"
+            disabled={isFirst}
+            onClick={() => onMove(slot.id, -1)}
+            aria-label="Mover para cima"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-8 sm:w-5"
+            disabled={isLast}
+            onClick={() => onMove(slot.id, 1)}
+            aria-label="Mover para baixo"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 sm:h-8 sm:w-8 hover:text-destructive ml-auto"
+          onClick={() => onDelete(slot.id)}
+          aria-label="Apagar"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

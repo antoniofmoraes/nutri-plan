@@ -105,7 +105,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        if (string.IsNullOrWhiteSpace(corsOrigin))
+        if (string.IsNullOrWhiteSpace(corsOrigin) || corsOrigin.Trim() == "*")
         {
             policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
         }

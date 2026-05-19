@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { WeekDay } from '@/types';
 import { weekDays } from '@/components/plan-detail/types';
 import { WeekView } from '@/components/plan-detail/WeekView';
@@ -38,7 +39,9 @@ export default function PlanDetail() {
   } = useMealPlan();
 
   const plan = mealPlans.find((p) => p.id === id);
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const effectiveViewMode: ViewMode = isMobile ? 'day' : viewMode;
   const [selectedDay, setSelectedDay] = useState<WeekDay>('segunda');
 
   const [slotsManagerOpen, setSlotsManagerOpen] = useState(false);
@@ -156,10 +159,10 @@ export default function PlanDetail() {
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-foreground font-display truncate">{plan.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {viewMode === 'week' ? 'Visão semanal' : `Visão diária — ${weekDays.find(d => d.value === selectedDay)?.label}`}
+            {effectiveViewMode === 'week' ? 'Visão semanal' : `Visão diária — ${weekDays.find(d => d.value === selectedDay)?.label}`}
           </p>
         </div>
-        {viewMode === 'day' && (
+        {!isMobile && viewMode === 'day' && (
           <Button variant="outline" onClick={() => setViewMode('week')}>
             <CalendarDays className="mr-2 h-4 w-4" />
             Semana
@@ -177,7 +180,7 @@ export default function PlanDetail() {
             Adicione uma refeição para começar (Café da manhã, Almoço, …)
           </p>
         </div>
-      ) : viewMode === 'week' ? (
+      ) : effectiveViewMode === 'week' ? (
         <WeekView
           plan={plan}
           onDayClick={goToDayView}

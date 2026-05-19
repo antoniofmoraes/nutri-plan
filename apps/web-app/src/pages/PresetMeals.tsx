@@ -180,17 +180,17 @@ export default function PresetMeals() {
             const isExpanded = expandedId === preset.id;
             return (
               <Card key={preset.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => setExpandedId(isExpanded ? null : preset.id)}
                     >
                       <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-display">{preset.name}</CardTitle>
-                        {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        <CardTitle className="text-lg font-display truncate">{preset.name}</CardTitle>
+                        {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
                       </div>
-                      <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
                         <span className="text-accent font-medium">{macros.calories.toFixed(0)} kcal</span>
                         <span>P: {macros.protein.toFixed(0)}g</span>
                         <span>C: {macros.carbs.toFixed(0)}g</span>
@@ -198,11 +198,11 @@ export default function PresetMeals() {
                         <span>• {preset.foods.length} alimento{preset.foods.length !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-11 sm:h-9"
                         onClick={() => handleOpenApply(preset.id)}
                         disabled={preset.foods.length === 0 || mealPlans.length === 0}
                         title="Aplicar no plano"
@@ -210,20 +210,27 @@ export default function PresetMeals() {
                         <Send className="mr-1 h-3 w-3" />
                         Aplicar
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(preset)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-11 w-11 sm:h-9 sm:w-9"
+                        onClick={() => handleOpenEdit(preset)}
+                        aria-label="Editar"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-11 w-11 sm:h-9 sm:w-9 hover:text-destructive"
                         onClick={() => setDeleteTarget(preset.id)}
-                        className="hover:text-destructive"
+                        aria-label="Excluir"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </CardHeader>
+                </div>
                 {isExpanded && (
                   <CardContent>
                     <div className="space-y-2">
@@ -455,38 +462,76 @@ function ApplyPresetDialog({
 
           {/* Slot × Day grid */}
           {selectedPlan && orderedSlots.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="p-2 text-left text-xs font-semibold text-muted-foreground">Refeição</th>
-                    {weekDays.map(d => (
-                      <th key={d.value} className="p-2 text-center text-xs font-semibold text-muted-foreground">{d.short}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {orderedSlots.map(slot => (
-                    <tr key={slot.id} className="border-b last:border-b-0">
-                      <td className="p-2 text-xs font-medium whitespace-nowrap">{slot.name}</td>
+            <>
+              {/* Mobile: lista vertical por slot */}
+              <div className="space-y-3 md:hidden">
+                {orderedSlots.map(slot => (
+                  <div key={slot.id} className="rounded-lg border p-3">
+                    <p className="text-sm font-semibold mb-2">{slot.name}</p>
+                    <div className="grid grid-cols-2 gap-2">
                       {weekDays.map(day => {
                         const dayPlan = selectedPlan.days.find(d => d.day === day.value);
                         const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
-                        if (!meal) return <td key={day.value} className="p-2 text-center"><span className="text-muted-foreground">—</span></td>;
+                        if (!meal) {
+                          return (
+                            <div key={day.value} className="flex items-center gap-2 px-2 py-2 text-sm text-muted-foreground">
+                              <span className="w-10">{day.short}</span>
+                              <span>—</span>
+                            </div>
+                          );
+                        }
                         return (
-                          <td key={day.value} className="p-2 text-center">
+                          <label
+                            key={day.value}
+                            className="flex items-center gap-2 rounded-md border px-2 py-2 text-sm cursor-pointer hover:bg-secondary min-h-[44px]"
+                          >
                             <Checkbox
                               checked={selectedMealIds.has(meal.id)}
                               onCheckedChange={() => onToggleMealId(meal.id)}
                             />
-                          </td>
+                            <span>{day.short}</span>
+                          </label>
                         );
                       })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: tabela */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="p-2 text-left text-xs font-semibold text-muted-foreground">Refeição</th>
+                      {weekDays.map(d => (
+                        <th key={d.value} className="p-2 text-center text-xs font-semibold text-muted-foreground">{d.short}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {orderedSlots.map(slot => (
+                      <tr key={slot.id} className="border-b last:border-b-0">
+                        <td className="p-2 text-xs font-medium whitespace-nowrap">{slot.name}</td>
+                        {weekDays.map(day => {
+                          const dayPlan = selectedPlan.days.find(d => d.day === day.value);
+                          const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
+                          if (!meal) return <td key={day.value} className="p-2 text-center"><span className="text-muted-foreground">—</span></td>;
+                          return (
+                            <td key={day.value} className="p-2 text-center">
+                              <Checkbox
+                                checked={selectedMealIds.has(meal.id)}
+                                onCheckedChange={() => onToggleMealId(meal.id)}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 

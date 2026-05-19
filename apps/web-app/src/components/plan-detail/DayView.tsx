@@ -20,9 +20,13 @@ export function DayView({ plan, day, foods, onChangeDay, onAddFood, onRemoveFood
   return (
     <div className="space-y-4">
       <Tabs value={day} onValueChange={(v) => onChangeDay(v as WeekDay)}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-7 h-auto">
           {weekDays.map((d) => (
-            <TabsTrigger key={d.value} value={d.value} className="text-xs">
+            <TabsTrigger
+              key={d.value}
+              value={d.value}
+              className="text-xs min-h-[44px] px-1 sm:px-3"
+            >
               <span className="hidden sm:inline">{d.short}</span>
               <span className="sm:hidden">{d.short.slice(0, 1)}</span>
             </TabsTrigger>

@@ -178,67 +178,111 @@ export default function Foods() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Alimento</TableHead>
-                  <TableHead className="text-right">Calorias</TableHead>
-                  <TableHead className="text-right">Proteína</TableHead>
-                  <TableHead className="text-right">Carbos</TableHead>
-                  <TableHead className="text-right">Gordura</TableHead>
-                  <TableHead className="text-right">Fibras</TableHead>
-                  <TableHead className="text-right">Porção</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {foods.map((food) => (
-                  <TableRow key={food.id}>
-                    <TableCell className="font-medium">{food.name}</TableCell>
-                    <TableCell className="text-right text-accent font-medium">
-                      {food.calories} kcal
-                    </TableCell>
-                    <TableCell className="text-right text-protein">
-                      {food.protein}g
-                    </TableCell>
-                    <TableCell className="text-right text-carbs">
-                      {food.carbs}g
-                    </TableCell>
-                    <TableCell className="text-right text-fat">
-                      {food.fat}g
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {food.fibers}g
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {food.portion}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(food)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(food.id)}
-                          className="hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <>
+          {/* Mobile: cards */}
+          <div className="space-y-2 md:hidden">
+            {foods.map((food) => (
+              <Card key={food.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{food.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{food.portion}</p>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => handleOpenEdit(food)}
+                      aria-label="Editar"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 hover:text-destructive"
+                      onClick={() => handleDelete(food.id)}
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                  <span className="text-accent font-medium">{food.calories} kcal</span>
+                  <span className="text-muted-foreground">Fibras: {food.fibers}g</span>
+                  <span className="text-protein">P: {food.protein}g</span>
+                  <span className="text-carbs">C: {food.carbs}g</span>
+                  <span className="text-fat">G: {food.fat}g</span>
+                </div>
+              </Card>
+            ))}
           </div>
+
+          {/* Desktop: tabela */}
+          <Card className="hidden md:block">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Alimento</TableHead>
+                    <TableHead className="text-right">Calorias</TableHead>
+                    <TableHead className="text-right">Proteína</TableHead>
+                    <TableHead className="text-right">Carbos</TableHead>
+                    <TableHead className="text-right">Gordura</TableHead>
+                    <TableHead className="text-right">Fibras</TableHead>
+                    <TableHead className="text-right">Porção</TableHead>
+                    <TableHead className="w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {foods.map((food) => (
+                    <TableRow key={food.id}>
+                      <TableCell className="font-medium">{food.name}</TableCell>
+                      <TableCell className="text-right text-accent font-medium">
+                        {food.calories} kcal
+                      </TableCell>
+                      <TableCell className="text-right text-protein">
+                        {food.protein}g
+                      </TableCell>
+                      <TableCell className="text-right text-carbs">
+                        {food.carbs}g
+                      </TableCell>
+                      <TableCell className="text-right text-fat">
+                        {food.fat}g
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {food.fibers}g
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {food.portion}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEdit(food)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(food.id)}
+                            className="hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
 
           {/* Infinite scroll trigger */}
           <div ref={loaderRef} className="flex justify-center py-4">
@@ -251,7 +295,7 @@ export default function Foods() {
               </p>
             )}
           </div>
-        </Card>
+        </>
       )}
 
       {/* Dialog */}

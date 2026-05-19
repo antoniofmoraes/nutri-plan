@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useMealPlan } from '@/hooks/useMealPlans';
+import { useAllFoods } from '@/hooks/useFoods';
+import { usePresetMeals } from '@/hooks/usePresetMeals';
+import { calculateMealMacros, calculateDayMacros } from '@/lib/macros';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Food, WeekDay } from '@/types';
 import { weekDays } from '@/components/plan-detail/types';
@@ -17,9 +20,7 @@ export default function PlanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    mealPlans,
-    foods,
-    presetMeals,
+    plan,
     addSlot,
     updateSlot,
     deleteSlot,
@@ -30,11 +31,9 @@ export default function PlanDetail() {
     setMealCheat,
     copyMeal,
     applyPreset,
-    calculateMealMacros,
-    calculateDayMacros,
-  } = useMealPlan();
-
-  const plan = mealPlans.find((p) => p.id === id);
+  } = useMealPlan(id);
+  const { foods } = useAllFoods();
+  const { presetMeals } = usePresetMeals();
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const effectiveViewMode: ViewMode = isMobile ? 'day' : viewMode;
@@ -57,16 +56,16 @@ export default function PlanDetail() {
   }
 
   const handleAddSlot = async (input: { name: string; time?: string }) => {
-    await addSlot(plan.id, input);
+    await addSlot(input);
   };
 
   const handleUpdateSlot = async (slotId: string, updates: { name?: string; time?: string }) => {
-    await updateSlot(plan.id, slotId, updates);
+    await updateSlot(slotId, updates);
   };
 
   const handleDeleteSlot = async (slotId: string) => {
     if (!confirm('Apagar essa refeição de todos os dias?')) return;
-    await deleteSlot(plan.id, slotId);
+    await deleteSlot(slotId);
   };
 
   const handleMoveSlot = async (slotId: string, direction: -1 | 1) => {
@@ -75,7 +74,7 @@ export default function PlanDetail() {
     const target = idx + direction;
     if (idx < 0 || target < 0 || target >= orderedSlots.length) return;
     [orderedSlots[idx], orderedSlots[target]] = [orderedSlots[target], orderedSlots[idx]];
-    await reorderSlots(plan.id, orderedSlots.map(s => s.id));
+    await reorderSlots(orderedSlots.map(s => s.id));
   };
 
   const handleOpenFoodDialog = (mealId: string) => {
@@ -85,25 +84,25 @@ export default function PlanDetail() {
 
   const handleAddFood = async (food: Food, quantity: number) => {
     if (!targetMealId) return;
-    await addFoodToMeal(plan.id, targetMealId, food, quantity);
+    await addFoodToMeal(targetMealId, food, quantity);
   };
 
   const handleApplyPreset = async (presetId: string) => {
     if (!targetMealId) return;
-    await applyPreset(plan.id, presetId, [targetMealId]);
+    await applyPreset(presetId, [targetMealId]);
   };
 
   const handleRemoveFood = async (mealId: string, foodId: string) => {
-    await removeFoodFromMeal(plan.id, mealId, foodId);
+    await removeFoodFromMeal(mealId, foodId);
   };
 
   const handleUpdateFood = async (mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => {
-    await updateMealFood(plan.id, mealId, foodId, updates);
+    await updateMealFood(mealId, foodId, updates);
   };
 
   const handleToggleCheat = async (mealId: string, currentlyCheat: boolean) => {
     try {
-      await setMealCheat(plan.id, mealId, !currentlyCheat);
+      await setMealCheat(mealId, !currentlyCheat);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erro ao atualizar');
     }
@@ -112,7 +111,7 @@ export default function PlanDetail() {
   const handleCopyMeal = async (sourceMealId: string, targetMealIds: string[]) => {
     if (targetMealIds.length === 0) return;
     try {
-      await copyMeal(plan.id, sourceMealId, targetMealIds);
+      await copyMeal(sourceMealId, targetMealIds);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erro ao copiar');
     }

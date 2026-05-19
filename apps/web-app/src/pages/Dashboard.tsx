@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Flame, Beef, Wheat, Droplets, Plus } from 'lucide-react';
-import { useMealPlan } from '@/contexts/MealPlanContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMealPlans } from '@/hooks/useMealPlans';
+import { calculateDayMacros, calculateMealMacros } from '@/lib/macros';
 import { MacroCard } from '@/components/dashboard/MacroCard';
 import { MealCard } from '@/components/dashboard/MealCard';
 import { MacroRing } from '@/components/ui/macro-ring';
@@ -29,7 +30,7 @@ function getTodayWeekDay(): WeekDay {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { mealPlans, calculateDayMacros, calculateMealMacros } = useMealPlan();
+  const { mealPlans } = useMealPlans();
   const mainPlan = mealPlans.find(p => p.isMain);
   const [selectedPlanId, setSelectedPlanId] = useState<string>(mainPlan?.id || mealPlans[0]?.id || '');
   const [selectedDay, setSelectedDay] = useState<WeekDay>(getTodayWeekDay());
@@ -40,7 +41,7 @@ export default function Dashboard() {
   const dayMacros = useMemo(() => {
     if (!dayPlan) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     return calculateDayMacros(dayPlan, selectedPlan);
-  }, [dayPlan, selectedPlan, calculateDayMacros]);
+  }, [dayPlan, selectedPlan]);
 
   const todayLabel = weekDays.find(d => d.value === selectedDay)?.label || '';
 

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Plus, BookCopy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { usePresetMeals } from '@/hooks/usePresetMeals';
+import { useAllFoods } from '@/hooks/useFoods';
+import { useMealPlans } from '@/hooks/useMealPlans';
 import type { PresetMeal, Food } from '@/types';
 import { PresetCard } from '@/components/preset-meals/PresetCard';
 import { PresetNameDialog } from '@/components/preset-meals/PresetNameDialog';
@@ -13,15 +15,15 @@ import { ApplyPresetDialog } from '@/components/preset-meals/ApplyPresetDialog';
 export default function PresetMeals() {
   const {
     presetMeals,
-    foods,
-    mealPlans,
     addPresetMeal,
     updatePresetMeal,
     deletePresetMeal,
     addFoodToPreset,
     removeFoodFromPreset,
     applyPreset,
-  } = useMealPlan();
+  } = usePresetMeals();
+  const { foods } = useAllFoods();
+  const { mealPlans } = useMealPlans();
 
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<PresetMeal | null>(null);
@@ -66,9 +68,9 @@ export default function PresetMeals() {
     await addFoodToPreset(foodDialogPresetId, food, quantity);
   };
 
-  const handleApply = async (planId: string, mealIds: string[]) => {
+  const handleApply = async (_planId: string, mealIds: string[]) => {
     if (!applyPresetId) return;
-    await applyPreset(planId, applyPresetId, mealIds);
+    await applyPreset(applyPresetId, mealIds);
     setApplyPresetId(null);
   };
 

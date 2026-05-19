@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useMealPlans } from '@/hooks/useMealPlans';
 import { ShoppingList, WeekDay } from '@/types';
 import { shoppingListService } from '@/services/shoppingListService';
 import { toast } from 'sonner';
@@ -23,7 +23,7 @@ const weekDays: { value: WeekDay; label: string }[] = [
 export default function ShoppingListDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mealPlans } = useMealPlan();
+  const { mealPlans } = useMealPlans();
   const [list, setList] = useState<ShoppingList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectionOpen, setSelectionOpen] = useState(false);

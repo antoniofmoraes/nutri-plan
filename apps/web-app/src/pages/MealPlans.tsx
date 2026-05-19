@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useMealPlans } from '@/hooks/useMealPlans';
+import { calculatePlanMacros } from '@/lib/macros';
 import { MealPlan, PlanGoal } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -38,7 +39,7 @@ const goalColors: Record<PlanGoal, string> = {
 };
 
 export default function MealPlans() {
-  const { mealPlans, addMealPlan, updateMealPlan, deleteMealPlan, setMainPlan, calculatePlanMacros } = useMealPlan();
+  const { mealPlans, addMealPlan, updateMealPlan, deleteMealPlan, setMainPlan } = useMealPlans();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MealPlan | null>(null);

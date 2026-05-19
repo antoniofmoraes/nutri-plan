@@ -152,26 +152,30 @@ export default function PlanDetail() {
   return (
     <div className="animate-fade-in space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/planos')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-foreground font-display truncate">{plan.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {effectiveViewMode === 'week' ? 'Visão semanal' : `Visão diária — ${weekDays.find(d => d.value === selectedDay)?.label}`}
-          </p>
-        </div>
-        {!isMobile && viewMode === 'day' && (
-          <Button variant="outline" onClick={() => setViewMode('week')}>
-            <CalendarDays className="mr-2 h-4 w-4" />
-            Semana
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:gap-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/planos')}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-        )}
-        <Button onClick={() => setSlotsManagerOpen(true)} className="bg-gradient-primary">
-          <Settings2 className="mr-1 h-4 w-4" />
-          Editar refeições
-        </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-foreground font-display truncate">{plan.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              {effectiveViewMode === 'week' ? 'Visão semanal' : `Visão diária — ${weekDays.find(d => d.value === selectedDay)?.label}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {!isMobile && viewMode === 'day' && (
+            <Button variant="outline" onClick={() => setViewMode('week')}>
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Semana
+            </Button>
+          )}
+          <Button onClick={() => setSlotsManagerOpen(true)} className="bg-gradient-primary">
+            <Settings2 className="mr-1 h-4 w-4" />
+            Editar refeições
+          </Button>
+        </div>
       </div>
 
       {plan.slots.length === 0 ? (
@@ -218,7 +222,7 @@ export default function PlanDetail() {
 
       {/* Food / Preset Dialog */}
       <Dialog open={foodDialogOpen} onOpenChange={setFoodDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display">
               {foodDialogMode === 'food' ? 'Adicionar Alimento' : 'Aplicar Refeição Pronta'}
@@ -292,6 +296,7 @@ export default function PlanDetail() {
                   <Label>Quantidade (gramas)</Label>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     placeholder="100"
                     value={foodQuantity}
                     onChange={(e) => setFoodQuantity(e.target.value)}

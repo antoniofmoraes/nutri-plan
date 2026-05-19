@@ -380,6 +380,7 @@ export default function PresetMeals() {
               <Label>Quantidade (gramas)</Label>
               <Input
                 type="number"
+                inputMode="decimal"
                 placeholder="100"
                 value={foodQuantity}
                 onChange={(e) => setFoodQuantity(e.target.value)}

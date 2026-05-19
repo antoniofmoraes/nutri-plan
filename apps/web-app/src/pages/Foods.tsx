@@ -317,7 +317,7 @@ export default function Foods() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Calorias (kcal)</Label>
-                <Input type="number" placeholder="0" {...form.register('calories')} />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('calories')} />
               </div>
               <div className="space-y-2">
                 <Label>Porção</Label>
@@ -327,19 +327,19 @@ export default function Foods() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Proteína (g)</Label>
-                <Input type="number" placeholder="0" {...form.register('protein')} />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('protein')} />
               </div>
               <div className="space-y-2">
                 <Label>Carboidratos (g)</Label>
-                <Input type="number" placeholder="0" {...form.register('carbs')} />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('carbs')} />
               </div>
               <div className="space-y-2">
                 <Label>Gordura (g)</Label>
-                <Input type="number" placeholder="0" {...form.register('fat')} />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fat')} />
               </div>
               <div className="space-y-2">
                 <Label>Fibras (g)</Label>
-                <Input type="number" placeholder="0" {...form.register('fibers')} />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fibers')} />
               </div>
             </div>
             <DialogFooter>

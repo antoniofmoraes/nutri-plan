@@ -152,6 +152,7 @@ export default function MealPlans() {
                 <Input
                   id="daily-calories"
                   type="number"
+                  inputMode="decimal"
                   placeholder="Ex: 2000"
                   {...form.register('dailyCalories')}
                 />
@@ -165,6 +166,7 @@ export default function MealPlans() {
                   <Input
                     id="daily-protein"
                     type="number"
+                    inputMode="decimal"
                     placeholder="Ex: 150"
                     {...form.register('dailyProtein')}
                   />
@@ -174,6 +176,7 @@ export default function MealPlans() {
                   <Input
                     id="daily-carbs"
                     type="number"
+                    inputMode="decimal"
                     placeholder="Ex: 250"
                     {...form.register('dailyCarbs')}
                   />
@@ -183,6 +186,7 @@ export default function MealPlans() {
                   <Input
                     id="daily-fat"
                     type="number"
+                    inputMode="decimal"
                     placeholder="Ex: 65"
                     {...form.register('dailyFat')}
                   />

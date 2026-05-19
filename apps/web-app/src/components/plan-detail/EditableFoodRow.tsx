@@ -120,6 +120,7 @@ export function EditableFoodRow({ foods, currentFood, currentQuantity, onSave, o
       <div className="flex items-center gap-2">
         <Input
           type="number"
+          inputMode="decimal"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           className="h-8 flex-1"

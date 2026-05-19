@@ -34,22 +34,22 @@ export function DayView({ plan, day, foods, onChangeDay, onAddFood, onRemoveFood
         </TabsList>
       </Tabs>
 
-      <div className="grid grid-cols-2 gap-3 rounded-xl bg-card p-4 shadow-soft sm:grid-cols-4">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 rounded-xl bg-card p-3 sm:p-4 shadow-soft">
         <div className="text-center">
-          <p className="text-2xl font-bold text-accent font-display">{dayMacros.calories.toFixed(0)}</p>
+          <p className="text-lg sm:text-2xl font-bold text-accent font-display">{dayMacros.calories.toFixed(0)}</p>
           <p className="text-xs text-muted-foreground">kcal</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-protein font-display">{dayMacros.protein.toFixed(0)}g</p>
-          <p className="text-xs text-muted-foreground">Proteína</p>
+          <p className="text-lg sm:text-2xl font-bold text-protein font-display">{dayMacros.protein.toFixed(0)}g</p>
+          <p className="text-xs text-muted-foreground"><span className="sm:hidden">P</span><span className="hidden sm:inline">Proteína</span></p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-carbs font-display">{dayMacros.carbs.toFixed(0)}g</p>
-          <p className="text-xs text-muted-foreground">Carbos</p>
+          <p className="text-lg sm:text-2xl font-bold text-carbs font-display">{dayMacros.carbs.toFixed(0)}g</p>
+          <p className="text-xs text-muted-foreground"><span className="sm:hidden">C</span><span className="hidden sm:inline">Carbos</span></p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-fat font-display">{dayMacros.fat.toFixed(0)}g</p>
-          <p className="text-xs text-muted-foreground">Gordura</p>
+          <p className="text-lg sm:text-2xl font-bold text-fat font-display">{dayMacros.fat.toFixed(0)}g</p>
+          <p className="text-xs text-muted-foreground"><span className="sm:hidden">G</span><span className="hidden sm:inline">Gordura</span></p>
         </div>
       </div>
 

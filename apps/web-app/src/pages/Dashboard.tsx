@@ -127,12 +127,12 @@ export default function Dashboard() {
 
           {/* Day Tabs */}
           <Tabs value={selectedDay} onValueChange={(v) => setSelectedDay(v as WeekDay)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 bg-muted p-1">
+            <TabsList className="grid w-full grid-cols-7 bg-muted p-1 h-auto">
               {weekDays.map(day => (
                 <TabsTrigger
                   key={day.value}
                   value={day.value}
-                  className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  className="text-xs sm:text-sm min-h-[44px] px-1 sm:px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
                   <span className="hidden sm:inline">{day.short}</span>
                   <span className="sm:hidden">{day.short.slice(0, 1)}</span>

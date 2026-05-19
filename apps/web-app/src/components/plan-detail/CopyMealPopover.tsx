@@ -56,7 +56,7 @@ export function CopyMealPopover({ plan, meal, currentDay, onCopy }: CopyMealPopo
           <Copy className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
+      <PopoverContent className="w-[min(14rem,90vw)] p-2" align="start">
         <p className="text-xs font-semibold px-2 py-1.5">Copiar para:</p>
         <button
           type="button"

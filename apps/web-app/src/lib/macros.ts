@@ -2,8 +2,10 @@ import type { Meal, DayPlan, MealPlan, MacroSummary } from "@/types";
 
 const ZERO: MacroSummary = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
-export function calculateRawMealMacros(meal: Meal): MacroSummary {
-  return meal.foods.reduce(
+export function calculateFoodsMacros(
+  foods: ReadonlyArray<{ food: { calories: number; protein: number; carbs: number; fat: number }; quantity: number }>
+): MacroSummary {
+  return foods.reduce(
     (acc, { food, quantity }) => ({
       calories: acc.calories + (food.calories * quantity) / 100,
       protein: acc.protein + (food.protein * quantity) / 100,
@@ -12,6 +14,10 @@ export function calculateRawMealMacros(meal: Meal): MacroSummary {
     }),
     { ...ZERO }
   );
+}
+
+export function calculateRawMealMacros(meal: Meal): MacroSummary {
+  return calculateFoodsMacros(meal.foods);
 }
 
 export function buildSlotAverages(plan: MealPlan): Map<string, MacroSummary> {

@@ -53,20 +53,26 @@ public class AuthService(AppDbContext db, IConfiguration config)
 
     private string GenerateToken(User user)
     {
-        var secret = config["JWT_SECRET"] ?? config["Jwt:Secret"] ?? "default-secret-change-me";
+        var secret = config["JWT_SECRET"] ?? config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("JWT_SECRET não configurado");
         var expiresIn = config["JWT_EXPIRES_IN"] ?? config["Jwt:ExpiresIn"] ?? "7d";
+        var issuer = config["JWT_ISSUER"] ?? "nutriplan-api";
+        var audience = config["JWT_AUDIENCE"] ?? "nutriplan-app";
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
             new Claim("userId", user.Id.ToString()),
-            new Claim("email", user.Email)
+            new Claim("email", user.Email),
+            new Claim("isAdmin", user.IsAdmin ? "true" : "false")
         };
 
         var expiration = ParseExpiration(expiresIn);
 
         var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
             claims: claims,
             expires: DateTime.UtcNow.Add(expiration),
             signingCredentials: creds
@@ -81,6 +87,6 @@ public class AuthService(AppDbContext db, IConfiguration config)
             return TimeSpan.FromDays(days);
         if (value.EndsWith('h') && int.TryParse(value[..^1], out var hours))
             return TimeSpan.FromHours(hours);
-        return TimeSpan.FromDays(7);
+        throw new InvalidOperationException($"JWT_EXPIRES_IN inválido: '{value}' (use formato '7d' ou '12h')");
     }
 }

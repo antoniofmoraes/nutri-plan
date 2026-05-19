@@ -12,8 +12,7 @@ public class MealPlanService(AppDbContext db)
 
     public async Task<List<MealPlanResponse>> GetAllByUserAsync(Guid userId)
     {
-        var user = await db.Users.FindAsync(userId);
-        var mainPlanId = user?.MainMealPlanId;
+        var mainPlanId = await GetMainPlanIdAsync(userId);
 
         var plans = await GetPlansQuery()
             .Where(mp => mp.UserId == userId)
@@ -32,8 +31,8 @@ public class MealPlanService(AppDbContext db)
         if (plan.UserId != userId)
             throw new ApiException("Acesso negado", 403);
 
-        var user = await db.Users.FindAsync(userId);
-        return ToResponse(plan, user?.MainMealPlanId);
+        var mainPlanId = await GetMainPlanIdAsync(userId);
+        return ToResponse(plan, mainPlanId);
     }
 
     public async Task<MealPlanResponse> CreateAsync(Guid userId, CreateMealPlanRequest request)
@@ -53,9 +52,8 @@ public class MealPlanService(AppDbContext db)
         db.MealPlans.Add(plan);
         await db.SaveChangesAsync();
 
-        var user = await db.Users.FindAsync(userId);
-        var created = await GetPlansQuery().FirstAsync(mp => mp.Id == plan.Id);
-        return ToResponse(created, user?.MainMealPlanId);
+        // New plan can't be the main plan yet (SetMainPlanAsync is a separate op).
+        return ToResponse(plan, mainPlanId: null);
     }
 
     public async Task<MealPlanResponse> UpdateAsync(Guid id, Guid userId, UpdateMealPlanRequest request)
@@ -74,8 +72,8 @@ public class MealPlanService(AppDbContext db)
         if (request.DailyFat.HasValue) plan.DailyFat = request.DailyFat;
 
         await db.SaveChangesAsync();
-        var user = await db.Users.FindAsync(userId);
-        return ToResponse(plan, user?.MainMealPlanId);
+        var mainPlanId = await GetMainPlanIdAsync(userId);
+        return ToResponse(plan, mainPlanId);
     }
 
     public async Task DeleteAsync(Guid id, Guid userId)
@@ -89,6 +87,12 @@ public class MealPlanService(AppDbContext db)
         db.MealPlans.Remove(plan);
         await db.SaveChangesAsync();
     }
+
+    private Task<Guid?> GetMainPlanIdAsync(Guid userId) =>
+        db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.MainMealPlanId)
+            .FirstOrDefaultAsync();
 
     private IQueryable<MealPlan> GetPlansQuery() =>
         db.MealPlans

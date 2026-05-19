@@ -9,10 +9,10 @@ interface MacroCardProps {
 }
 
 const colorMap = {
-  calories: 'from-accent to-orange-400',
-  protein: 'from-protein to-pink-400',
-  carbs: 'from-carbs to-amber-400',
-  fat: 'from-fat to-sky-400',
+  calories: 'from-accent to-accent-soft',
+  protein: 'from-protein to-protein-soft',
+  carbs: 'from-carbs to-carbs-soft',
+  fat: 'from-fat to-fat-soft',
 };
 
 const bgColorMap = {

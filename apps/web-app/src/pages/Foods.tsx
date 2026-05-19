@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, Apple, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -9,6 +12,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useMealPlan } from '@/contexts/MealPlanContext';
 import { Food } from '@/types';
 import { foodService } from '@/services/foodService';
+
+const foodSchema = z.object({
+  name: z.string().min(1, 'Nome obrigatório'),
+  calories: z.coerce.number().min(0, 'Valor inválido'),
+  protein: z.coerce.number().min(0, 'Valor inválido'),
+  carbs: z.coerce.number().min(0, 'Valor inválido'),
+  fat: z.coerce.number().min(0, 'Valor inválido'),
+  fibers: z.coerce.number().min(0, 'Valor inválido'),
+  portion: z.string().default('100g'),
+});
+
+type FoodFormData = z.infer<typeof foodSchema>;
 
 const PAGE_SIZE = 50;
 
@@ -22,14 +37,10 @@ export default function Foods() {
   const [total, setTotal] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFood, setEditingFood] = useState<Food | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    fibers: '',
-    portion: '',
+
+  const form = useForm<FoodFormData>({
+    resolver: zodResolver(foodSchema),
+    defaultValues: { name: '', calories: 0, protein: 0, carbs: 0, fat: 0, fibers: 0, portion: '100g' },
   });
 
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -76,35 +87,33 @@ export default function Foods() {
 
   const handleOpenCreate = () => {
     setEditingFood(null);
-    setFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', fibers: '', portion: '100g' });
+    form.reset({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0, fibers: 0, portion: '100g' });
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (food: Food) => {
     setEditingFood(food);
-    setFormData({
+    form.reset({
       name: food.name,
-      calories: food.calories.toString(),
-      protein: food.protein.toString(),
-      carbs: food.carbs.toString(),
-      fat: food.fat.toString(),
-      fibers: food.fibers.toString(),
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+      fibers: food.fibers,
       portion: food.portion || '100g',
     });
     setDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) return;
-
+  const onSubmit = async (data: FoodFormData) => {
     const foodData = {
-      name: formData.name,
-      calories: Number(formData.calories) || 0,
-      protein: Number(formData.protein) || 0,
-      carbs: Number(formData.carbs) || 0,
-      fat: Number(formData.fat) || 0,
-      fibers: Number(formData.fibers) || 0,
-      portion: formData.portion || '100g',
+      name: data.name,
+      calories: data.calories,
+      protein: data.protein,
+      carbs: data.carbs,
+      fat: data.fat,
+      fibers: data.fibers,
+      portion: data.portion || '100g',
     };
 
     if (editingFood) {
@@ -253,81 +262,51 @@ export default function Foods() {
               {editingFood ? 'Editar Alimento' : 'Novo Alimento'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nome</Label>
-              <Input
-                placeholder="Ex: Frango Grelhado"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+              <Input placeholder="Ex: Frango Grelhado" {...form.register('name')} />
+              {form.formState.errors.name && (
+                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Calorias (kcal)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.calories}
-                  onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
-                />
+                <Input type="number" placeholder="0" {...form.register('calories')} />
               </div>
               <div className="space-y-2">
                 <Label>Porção</Label>
-                <Input
-                  placeholder="100g"
-                  value={formData.portion}
-                  onChange={(e) => setFormData({ ...formData, portion: e.target.value })}
-                />
+                <Input placeholder="100g" {...form.register('portion')} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Proteína (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.protein}
-                  onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                />
+                <Input type="number" placeholder="0" {...form.register('protein')} />
               </div>
               <div className="space-y-2">
                 <Label>Carboidratos (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.carbs}
-                  onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
-                />
+                <Input type="number" placeholder="0" {...form.register('carbs')} />
               </div>
               <div className="space-y-2">
                 <Label>Gordura (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.fat}
-                  onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
-                />
+                <Input type="number" placeholder="0" {...form.register('fat')} />
               </div>
               <div className="space-y-2">
                 <Label>Fibras (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.fibers}
-                  onChange={(e) => setFormData({ ...formData, fibers: e.target.value })}
-                />
+                <Input type="number" placeholder="0" {...form.register('fibers')} />
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button onClick={handleSubmit} className="bg-gradient-primary hover:opacity-90">
-              {editingFood ? 'Salvar' : 'Adicionar'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-gradient-primary hover:opacity-90">
+                {editingFood ? 'Salvar' : 'Adicionar'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

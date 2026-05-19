@@ -22,6 +22,9 @@ public class User
     [Column("googleId")]
     public string? GoogleId { get; set; }
 
+    [Column("isAdmin")]
+    public bool IsAdmin { get; set; } = false;
+
     [Column("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

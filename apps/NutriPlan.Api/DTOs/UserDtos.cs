@@ -9,6 +9,9 @@ public record UpdateUserRequest
 
     [EmailAddress(ErrorMessage = "Email inválido")]
     public string? Email { get; init; }
+
+    /// <summary>Obrigatório quando trocar o email — confirma identidade.</summary>
+    public string? CurrentPassword { get; init; }
 }
 
 public record SetMainPlanRequest

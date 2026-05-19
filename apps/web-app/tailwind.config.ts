@@ -64,9 +64,20 @@ export default {
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
         info: "hsl(var(--info))",
-        protein: "hsl(var(--protein))",
-        carbs: "hsl(var(--carbs))",
-        fat: "hsl(var(--fat))",
+        protein: {
+          DEFAULT: "hsl(var(--protein))",
+          soft: "hsl(var(--protein-soft))",
+        },
+        carbs: {
+          DEFAULT: "hsl(var(--carbs))",
+          soft: "hsl(var(--carbs-soft))",
+        },
+        fat: {
+          DEFAULT: "hsl(var(--fat))",
+          soft: "hsl(var(--fat-soft))",
+        },
+        "accent-soft": "hsl(var(--accent-soft))",
+        favorite: "hsl(var(--favorite))",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -1,6 +1,9 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NutriPlan.Api.Data;
@@ -37,10 +40,22 @@ if (dbMatch.Success)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// JWT Authentication
+// JWT Authentication — exige JWT_SECRET em produção (fail-fast para evitar
+// o fallback inseguro que aceitaria tokens forjados).
 var jwtSecret = builder.Configuration["JWT_SECRET"]
-    ?? builder.Configuration["Jwt:Secret"]
-    ?? "default-secret-change-me";
+    ?? builder.Configuration["Jwt:Secret"];
+
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+    if (!builder.Environment.IsDevelopment())
+        throw new InvalidOperationException("JWT_SECRET é obrigatório em produção");
+    jwtSecret = "dev-only-secret-do-not-use-in-prod-please-replace-32b";
+}
+if (!builder.Environment.IsDevelopment() && Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+    throw new InvalidOperationException("JWT_SECRET deve ter pelo menos 32 bytes em produção");
+
+var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? "nutriplan-api";
+var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "nutriplan-app";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -49,9 +64,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ClockSkew = TimeSpan.Zero
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
         };
 
         options.Events = new JwtBearerEvents
@@ -72,22 +90,59 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy =>
+        policy.RequireAuthenticatedUser().RequireClaim("isAdmin", "true"));
+});
 
-// CORS
-var corsOrigin = builder.Configuration["CORS_ORIGIN"] ?? "*";
+// CORS — wildcard só em Development; produção exige CORS_ORIGIN explícito
+var corsOrigin = builder.Configuration["CORS_ORIGIN"];
+if (string.IsNullOrWhiteSpace(corsOrigin) && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException("CORS_ORIGIN é obrigatório em produção");
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        if (corsOrigin == "*")
+        if (string.IsNullOrWhiteSpace(corsOrigin))
+        {
             policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
         else
-            policy.WithOrigins(corsOrigin.Split(','))
+        {
+            var origins = corsOrigin
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            policy.WithOrigins(origins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();
+        }
     });
+});
+
+// Rate limiting — protege endpoints de auth contra brute force/enumeração
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new ApiResponse(false, Error: "Muitas tentativas. Tente novamente em instantes."),
+            cancellationToken);
+    };
+
+    // Janela curta para login/register: 10 req/min por IP
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 // Services
@@ -112,6 +167,7 @@ var app = builder.Build();
 // Middleware
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -138,10 +194,12 @@ app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 var auth = app.MapGroup("/api/auth");
 
 auth.MapPost("/register", async (RegisterRequest request, AuthService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.RegisterAsync(request)), statusCode: 201));
+    Results.Json(ApiResponses.Ok(await svc.RegisterAsync(request)), statusCode: 201))
+    .RequireRateLimiting("auth");
 
 auth.MapPost("/login", async (LoginRequest request, AuthService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.LoginAsync(request))));
+    Results.Json(ApiResponses.Ok(await svc.LoginAsync(request))))
+    .RequireRateLimiting("auth");
 
 auth.MapGet("/me", async (HttpContext ctx, AuthService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMeAsync(GetUserId(ctx)))))
@@ -170,6 +228,8 @@ users.MapDelete("/me", async (HttpContext ctx, UserService svc) =>
 });
 
 // ─── Foods ────────────────────────────────────────────────
+// Leitura: qualquer usuário autenticado. Mutação: apenas admin (o catálogo é
+// global/compartilhado — sem admin gate, qualquer user vandalizaria a base).
 var foods = app.MapGroup("/api/foods").RequireAuthorization();
 
 foods.MapGet("/", async (string? search, int? page, int? pageSize, FoodService svc) =>
@@ -179,16 +239,19 @@ foods.MapGet("/{id:guid}", async (Guid id, FoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id))));
 
 foods.MapPost("/", async (CreateFoodRequest request, FoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.CreateAsync(request)), statusCode: 201));
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(request)), statusCode: 201))
+    .RequireAuthorization("Admin");
 
 foods.MapPatch("/{id:guid}", async (Guid id, UpdateFoodRequest request, FoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, request))));
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, request))))
+    .RequireAuthorization("Admin");
 
 foods.MapDelete("/{id:guid}", async (Guid id, FoodService svc) =>
 {
     await svc.DeleteAsync(id);
     return Results.Json(new ApiResponse(true, Message: "Alimento excluído com sucesso"));
-});
+})
+    .RequireAuthorization("Admin");
 
 // ─── Meal Plans ───────────────────────────────────────────
 var mealPlans = app.MapGroup("/api/meal-plans").RequireAuthorization();

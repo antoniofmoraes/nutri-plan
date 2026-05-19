@@ -24,6 +24,11 @@ public class UserService(AppDbContext db)
 
         if (request.Email is not null && request.Email != user.Email)
         {
+            if (string.IsNullOrEmpty(request.CurrentPassword))
+                throw new ApiException("Senha atual é obrigatória para alterar o email", 400);
+            if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password))
+                throw new ApiException("Senha atual incorreta", 401);
+
             var emailTaken = await db.Users.AnyAsync(u => u.Email == request.Email);
             if (emailTaken)
                 throw new ApiException("Email já está em uso", 409);

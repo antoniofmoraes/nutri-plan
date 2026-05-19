@@ -10,13 +10,16 @@ public class MealFoodService(AppDbContext db)
 {
     public async Task<List<MealFoodResponse>> GetMealFoodsAsync(Guid mealId, Guid userId)
     {
-        var meal = await GetMealWithOwnership(mealId, userId);
-
-        var mealWithFoods = await db.Meals
+        var meal = await db.Meals
+            .WithOwnership()
             .Include(m => m.Foods).ThenInclude(mf => mf.Food)
-            .FirstAsync(m => m.Id == mealId);
+            .FirstOrDefaultAsync(m => m.Id == mealId);
 
-        return mealWithFoods.Foods.Select(ToResponse).ToList();
+        if (meal is null)
+            throw new ApiException("Refeição não encontrada", 404);
+        meal.AssertOwnership(userId);
+
+        return meal.Foods.Select(ToResponse).ToList();
     }
 
     public async Task<MealFoodResponse> AddFoodToMealAsync(Guid mealId, Guid userId, AddFoodToMealRequest request)
@@ -73,10 +76,12 @@ public class MealFoodService(AppDbContext db)
             return ToResponse(mealFood);
         }
 
-        // Food swap: remove current row, then upsert the new food
+        // Food swap: remove current row, then upsert the new food (atomic)
         var newFood = await db.Foods.FindAsync(targetFoodId);
         if (newFood is null)
             throw new ApiException("Alimento não encontrado", 404);
+
+        await using var tx = await db.Database.BeginTransactionAsync();
 
         db.MealFoods.Remove(mealFood);
         await db.SaveChangesAsync();
@@ -85,23 +90,27 @@ public class MealFoodService(AppDbContext db)
             .Include(mf => mf.Food)
             .FirstOrDefaultAsync(mf => mf.MealId == mealId && mf.FoodId == targetFoodId);
 
+        MealFood result;
         if (existing is not null)
         {
             existing.Quantity = targetQuantity;
-            await db.SaveChangesAsync();
-            return ToResponse(existing);
+            result = existing;
+        }
+        else
+        {
+            result = new MealFood
+            {
+                MealId = mealId,
+                FoodId = targetFoodId,
+                Quantity = targetQuantity,
+                Food = newFood
+            };
+            db.MealFoods.Add(result);
         }
 
-        var swapped = new MealFood
-        {
-            MealId = mealId,
-            FoodId = targetFoodId,
-            Quantity = targetQuantity
-        };
-        db.MealFoods.Add(swapped);
         await db.SaveChangesAsync();
-        swapped.Food = newFood;
-        return ToResponse(swapped);
+        await tx.CommitAsync();
+        return ToResponse(result);
     }
 
     public async Task RemoveFoodFromMealAsync(Guid mealId, Guid foodId, Guid userId)
@@ -121,13 +130,12 @@ public class MealFoodService(AppDbContext db)
     private async Task<Meal> GetMealWithOwnership(Guid mealId, Guid userId)
     {
         var meal = await db.Meals
-            .Include(m => m.DayPlan).ThenInclude(dp => dp.MealPlan)
+            .WithOwnership()
             .FirstOrDefaultAsync(m => m.Id == mealId);
 
         if (meal is null)
             throw new ApiException("Refeição não encontrada", 404);
-        if (meal.DayPlan.MealPlan.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        meal.AssertOwnership(userId);
 
         return meal;
     }

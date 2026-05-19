@@ -42,8 +42,14 @@
     --info: 200 80% 50%;
     
     --protein: 340 75% 55%;
+    --protein-soft: 330 80% 70%;
     --carbs: 45 90% 50%;
+    --carbs-soft: 40 95% 65%;
     --fat: 200 80% 50%;
+    --fat-soft: 195 85% 65%;
+    --accent-soft: 35 95% 65%;
+
+    --favorite: 42 95% 55%;
     
     --gradient-primary: linear-gradient(135deg, hsl(45 90% 50%) 0%, hsl(35 85% 45%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(25 95% 55%) 0%, hsl(40 90% 50%) 100%);
@@ -88,6 +94,12 @@
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
+
+    --protein-soft: 330 70% 60%;
+    --carbs-soft: 40 90% 55%;
+    --fat-soft: 195 80% 55%;
+    --accent-soft: 35 90% 60%;
+    --favorite: 42 95% 60%;
 
     --border: 35 15% 20%;
     --input: 35 15% 20%;

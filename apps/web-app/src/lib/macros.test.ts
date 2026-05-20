@@ -169,6 +169,19 @@ describe("calculateMealMacros", () => {
     const result = calculateMealMacros(cheatMeal);
     expect(result.calories).toBeCloseTo(130);
   });
+
+  it("retorna zeros para cheat meal quando slot só tem cheats", () => {
+    const cheatMeal = makeMeal({
+      id: "m-cheat",
+      isCheat: true,
+      foods: [{ food: rice, quantity: 300 }],
+    });
+    const plan = makePlan([
+      { day: "segunda", meals: [cheatMeal] },
+    ]);
+    const result = calculateMealMacros(cheatMeal, plan);
+    expect(result).toEqual({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  });
 });
 
 describe("calculateDayMacros", () => {
@@ -212,6 +225,44 @@ describe("calculateDayMacros", () => {
     const dayWithCheat: DayPlan = { day: "terca", meals: [cheatMeal] };
     const result = calculateDayMacros(dayWithCheat, plan);
     expect(result.calories).toBeCloseTo(165);
+  });
+
+  it("soma cheat (via média) e normal no mesmo dia", () => {
+    const normalAlmoco = makeMeal({
+      id: "m-almoco",
+      slotId: "slot-almoco",
+      foods: [{ food: rice, quantity: 100 }],
+    });
+    const cheatJanta = makeMeal({
+      id: "m-janta",
+      slotId: "slot-janta",
+      name: "Janta",
+      isCheat: true,
+      foods: [],
+    });
+    const normalJantaOutroDia = makeMeal({
+      id: "m-janta-seg",
+      slotId: "slot-janta",
+      name: "Janta",
+      foods: [{ food: chicken, quantity: 200 }],
+    });
+
+    const plan: MealPlan = {
+      ...makePlan([]),
+      slots: [
+        { id: "slot-almoco", name: "Almoço", sortOrder: 0 },
+        { id: "slot-janta", name: "Janta", sortOrder: 1 },
+      ],
+      days: [
+        { day: "segunda", meals: [normalJantaOutroDia] },
+        { day: "terca", meals: [normalAlmoco, cheatJanta] },
+      ],
+    };
+
+    const dayMixed: DayPlan = { day: "terca", meals: [normalAlmoco, cheatJanta] };
+    const result = calculateDayMacros(dayMixed, plan);
+    expect(result.calories).toBeCloseTo(130 + 330);
+    expect(result.protein).toBeCloseTo(2.7 + 62);
   });
 });
 

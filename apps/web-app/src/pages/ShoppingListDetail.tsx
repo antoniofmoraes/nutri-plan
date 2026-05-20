@@ -7,18 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Checkbox } from '@/components/ui/checkbox';
 import { useMealPlans } from '@/hooks/useMealPlans';
 import { ShoppingList, WeekDay } from '@/types';
+import { weekDays } from '@/lib/constants';
 import { shoppingListService } from '@/services/shoppingListService';
 import { toast } from 'sonner';
-
-const weekDays: { value: WeekDay; label: string }[] = [
-  { value: 'segunda', label: 'Segunda' },
-  { value: 'terca', label: 'Terça' },
-  { value: 'quarta', label: 'Quarta' },
-  { value: 'quinta', label: 'Quinta' },
-  { value: 'sexta', label: 'Sexta' },
-  { value: 'sabado', label: 'Sábado' },
-  { value: 'domingo', label: 'Domingo' },
-];
 
 export default function ShoppingListDetail() {
   const { id } = useParams<{ id: string }>();

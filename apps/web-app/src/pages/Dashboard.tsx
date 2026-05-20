@@ -10,17 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WeekDay } from '@/types';
+import { weekDays } from '@/lib/constants';
 import { Link } from 'react-router-dom';
-
-const weekDays: { value: WeekDay; label: string; short: string }[] = [
-  { value: 'segunda', label: 'Segunda-feira', short: 'Seg' },
-  { value: 'terca', label: 'Terça-feira', short: 'Ter' },
-  { value: 'quarta', label: 'Quarta-feira', short: 'Qua' },
-  { value: 'quinta', label: 'Quinta-feira', short: 'Qui' },
-  { value: 'sexta', label: 'Sexta-feira', short: 'Sex' },
-  { value: 'sabado', label: 'Sábado', short: 'Sáb' },
-  { value: 'domingo', label: 'Domingo', short: 'Dom' },
-];
 
 function getTodayWeekDay(): WeekDay {
   const dayIndex = new Date().getDay();

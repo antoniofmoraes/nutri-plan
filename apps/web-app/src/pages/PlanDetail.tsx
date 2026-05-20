@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { ArrowLeft, CalendarDays, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMealPlan } from '@/hooks/useMealPlans';

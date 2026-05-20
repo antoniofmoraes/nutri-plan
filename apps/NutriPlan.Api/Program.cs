@@ -33,7 +33,7 @@ if (dbMatch.Success)
         if (ipv4Addresses.Length > 0)
             host = ipv4Addresses[0].ToString();
     }
-    catch { /* fallback to original hostname */ }
+    catch (Exception ex) { Console.Error.WriteLine($"DNS IPv4 resolution failed for {host}, using original hostname: {ex.Message}"); }
     connectionString = $"Host={host};Port={dbMatch.Groups[4].Value};Database={dbMatch.Groups[5].Value};Username={dbMatch.Groups[1].Value};Password={dbMatch.Groups[2].Value};SSL Mode=Require;Trust Server Certificate=true";
 }
 

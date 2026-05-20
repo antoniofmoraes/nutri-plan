@@ -1,19 +1,34 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, Apple, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useFoodMutations } from '@/hooks/useFoods';
 import { Food } from '@/types';
 import { foodService } from '@/services/foodService';
+
+const foodSchema = z.object({
+  name: z.string().min(1, 'Nome obrigatório'),
+  calories: z.coerce.number().min(0, 'Valor inválido'),
+  protein: z.coerce.number().min(0, 'Valor inválido'),
+  carbs: z.coerce.number().min(0, 'Valor inválido'),
+  fat: z.coerce.number().min(0, 'Valor inválido'),
+  fibers: z.coerce.number().min(0, 'Valor inválido'),
+  portion: z.string().default('100g'),
+});
+
+type FoodFormData = z.infer<typeof foodSchema>;
 
 const PAGE_SIZE = 50;
 
 export default function Foods() {
-  const { addFood, updateFood, deleteFood } = useMealPlan();
+  const { createFood, updateFood, deleteFood } = useFoodMutations();
   const [foods, setFoods] = useState<Food[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -22,14 +37,10 @@ export default function Foods() {
   const [total, setTotal] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFood, setEditingFood] = useState<Food | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    fibers: '',
-    portion: '',
+
+  const form = useForm<FoodFormData>({
+    resolver: zodResolver(foodSchema),
+    defaultValues: { name: '', calories: 0, protein: 0, carbs: 0, fat: 0, fibers: 0, portion: '100g' },
   });
 
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -76,41 +87,39 @@ export default function Foods() {
 
   const handleOpenCreate = () => {
     setEditingFood(null);
-    setFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', fibers: '', portion: '100g' });
+    form.reset({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0, fibers: 0, portion: '100g' });
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (food: Food) => {
     setEditingFood(food);
-    setFormData({
+    form.reset({
       name: food.name,
-      calories: food.calories.toString(),
-      protein: food.protein.toString(),
-      carbs: food.carbs.toString(),
-      fat: food.fat.toString(),
-      fibers: food.fibers.toString(),
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+      fibers: food.fibers,
       portion: food.portion || '100g',
     });
     setDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) return;
-
+  const onSubmit = async (data: FoodFormData) => {
     const foodData = {
-      name: formData.name,
-      calories: Number(formData.calories) || 0,
-      protein: Number(formData.protein) || 0,
-      carbs: Number(formData.carbs) || 0,
-      fat: Number(formData.fat) || 0,
-      fibers: Number(formData.fibers) || 0,
-      portion: formData.portion || '100g',
+      name: data.name,
+      calories: data.calories,
+      protein: data.protein,
+      carbs: data.carbs,
+      fat: data.fat,
+      fibers: data.fibers,
+      portion: data.portion || '100g',
     };
 
     if (editingFood) {
       await updateFood(editingFood.id, foodData);
     } else {
-      await addFood(foodData);
+      await createFood(foodData);
     }
     setDialogOpen(false);
     fetchFoods(1, searchQuery, true);
@@ -169,67 +178,111 @@ export default function Foods() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Alimento</TableHead>
-                  <TableHead className="text-right">Calorias</TableHead>
-                  <TableHead className="text-right">Proteína</TableHead>
-                  <TableHead className="text-right">Carbos</TableHead>
-                  <TableHead className="text-right">Gordura</TableHead>
-                  <TableHead className="text-right">Fibras</TableHead>
-                  <TableHead className="text-right">Porção</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {foods.map((food) => (
-                  <TableRow key={food.id}>
-                    <TableCell className="font-medium">{food.name}</TableCell>
-                    <TableCell className="text-right text-accent font-medium">
-                      {food.calories} kcal
-                    </TableCell>
-                    <TableCell className="text-right text-protein">
-                      {food.protein}g
-                    </TableCell>
-                    <TableCell className="text-right text-carbs">
-                      {food.carbs}g
-                    </TableCell>
-                    <TableCell className="text-right text-fat">
-                      {food.fat}g
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {food.fibers}g
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {food.portion}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(food)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(food.id)}
-                          className="hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <>
+          {/* Mobile: cards */}
+          <div className="space-y-2 md:hidden">
+            {foods.map((food) => (
+              <Card key={food.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{food.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{food.portion}</p>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => handleOpenEdit(food)}
+                      aria-label="Editar"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 hover:text-destructive"
+                      onClick={() => handleDelete(food.id)}
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                  <span className="text-accent font-medium">{food.calories} kcal</span>
+                  <span className="text-muted-foreground">Fibras: {food.fibers}g</span>
+                  <span className="text-protein">P: {food.protein}g</span>
+                  <span className="text-carbs">C: {food.carbs}g</span>
+                  <span className="text-fat">G: {food.fat}g</span>
+                </div>
+              </Card>
+            ))}
           </div>
+
+          {/* Desktop: tabela */}
+          <Card className="hidden md:block">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Alimento</TableHead>
+                    <TableHead className="text-right">Calorias</TableHead>
+                    <TableHead className="text-right">Proteína</TableHead>
+                    <TableHead className="text-right">Carbos</TableHead>
+                    <TableHead className="text-right">Gordura</TableHead>
+                    <TableHead className="text-right">Fibras</TableHead>
+                    <TableHead className="text-right">Porção</TableHead>
+                    <TableHead className="w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {foods.map((food) => (
+                    <TableRow key={food.id}>
+                      <TableCell className="font-medium">{food.name}</TableCell>
+                      <TableCell className="text-right text-accent font-medium">
+                        {food.calories} kcal
+                      </TableCell>
+                      <TableCell className="text-right text-protein">
+                        {food.protein}g
+                      </TableCell>
+                      <TableCell className="text-right text-carbs">
+                        {food.carbs}g
+                      </TableCell>
+                      <TableCell className="text-right text-fat">
+                        {food.fat}g
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {food.fibers}g
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {food.portion}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEdit(food)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(food.id)}
+                            className="hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
 
           {/* Infinite scroll trigger */}
           <div ref={loaderRef} className="flex justify-center py-4">
@@ -242,7 +295,7 @@ export default function Foods() {
               </p>
             )}
           </div>
-        </Card>
+        </>
       )}
 
       {/* Dialog */}
@@ -253,81 +306,51 @@ export default function Foods() {
               {editingFood ? 'Editar Alimento' : 'Novo Alimento'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nome</Label>
-              <Input
-                placeholder="Ex: Frango Grelhado"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+              <Input placeholder="Ex: Frango Grelhado" {...form.register('name')} />
+              {form.formState.errors.name && (
+                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Calorias (kcal)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.calories}
-                  onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
-                />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('calories')} />
               </div>
               <div className="space-y-2">
                 <Label>Porção</Label>
-                <Input
-                  placeholder="100g"
-                  value={formData.portion}
-                  onChange={(e) => setFormData({ ...formData, portion: e.target.value })}
-                />
+                <Input placeholder="100g" {...form.register('portion')} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Proteína (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.protein}
-                  onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('protein')} />
               </div>
               <div className="space-y-2">
                 <Label>Carboidratos (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.carbs}
-                  onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
-                />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('carbs')} />
               </div>
               <div className="space-y-2">
                 <Label>Gordura (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.fat}
-                  onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
-                />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fat')} />
               </div>
               <div className="space-y-2">
                 <Label>Fibras (g)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.fibers}
-                  onChange={(e) => setFormData({ ...formData, fibers: e.target.value })}
-                />
+                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fibers')} />
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button onClick={handleSubmit} className="bg-gradient-primary hover:opacity-90">
-              {editingFood ? 'Salvar' : 'Adicionar'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-gradient-primary hover:opacity-90">
+                {editingFood ? 'Salvar' : 'Adicionar'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

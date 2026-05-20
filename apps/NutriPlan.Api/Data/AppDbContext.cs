@@ -24,6 +24,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.HasIndex(u => u.Email).IsUnique();
             entity.HasIndex(u => u.GoogleId).IsUnique().HasFilter("\"googleId\" IS NOT NULL");
+            entity.HasOne(u => u.MainMealPlan)
+                .WithOne()
+                .HasForeignKey<User>(u => u.MainMealPlanId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<MealPlan>(entity =>

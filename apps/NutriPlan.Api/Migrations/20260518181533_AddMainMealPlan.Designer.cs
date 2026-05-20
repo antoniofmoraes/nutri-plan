@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NutriPlan.Api.Data;
@@ -11,9 +12,11 @@ using NutriPlan.Api.Data;
 namespace NutriPlan.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518181533_AddMainMealPlan")]
+    partial class AddMainMealPlan
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -405,10 +408,6 @@ namespace NutriPlan.Api.Migrations
                     b.Property<string>("GoogleId")
                         .HasColumnType("text")
                         .HasColumnName("googleId");
-
-                    b.Property<bool>("IsAdmin")
-                        .HasColumnType("boolean")
-                        .HasColumnName("isAdmin");
 
                     b.Property<Guid?>("MainMealPlanId")
                         .HasColumnType("uuid")

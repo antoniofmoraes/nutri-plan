@@ -13,24 +13,11 @@ public class ShoppingListService(AppDbContext db)
 
     public async Task<List<ShoppingListSummaryResponse>> GetAllForUserAsync(Guid userId)
     {
-        // Lists where user is owner OR member
-        var ownedListIds = await db.ShoppingLists
-            .Where(sl => sl.OwnerId == userId)
-            .Select(sl => sl.Id)
-            .ToListAsync();
-
-        var memberListIds = await db.ShoppingListMembers
-            .Where(m => m.UserId == userId)
-            .Select(m => m.ShoppingListId)
-            .ToListAsync();
-
-        var allIds = ownedListIds.Concat(memberListIds).Distinct().ToList();
-
         var lists = await db.ShoppingLists
             .Include(sl => sl.Owner)
             .Include(sl => sl.Members)
             .Include(sl => sl.Meals)
-            .Where(sl => allIds.Contains(sl.Id))
+            .Where(sl => sl.OwnerId == userId || sl.Members.Any(m => m.UserId == userId))
             .OrderByDescending(sl => sl.UpdatedAt)
             .ToListAsync();
 
@@ -48,8 +35,8 @@ public class ShoppingListService(AppDbContext db)
 
     public async Task<ShoppingListResponse> GetByIdAsync(Guid id, Guid userId)
     {
-        var list = await GetListWithAccessAsync(id, userId);
-        return await ToResponseAsync(list, userId);
+        var list = await LoadFullForResponseAsync(id, userId, ownerOnly: false);
+        return BuildResponse(list, userId);
     }
 
     public async Task<ShoppingListResponse> CreateAsync(Guid userId, CreateShoppingListRequest request)
@@ -63,12 +50,13 @@ public class ShoppingListService(AppDbContext db)
         db.ShoppingLists.Add(list);
         await db.SaveChangesAsync();
 
-        return await ToResponseAsync(list, userId);
+        var full = await LoadFullForResponseAsync(list.Id, userId, ownerOnly: false);
+        return BuildResponse(full, userId);
     }
 
     public async Task<ShoppingListResponse> UpdateAsync(Guid id, Guid userId, UpdateShoppingListRequest request)
     {
-        var list = await GetListAsOwnerAsync(id, userId);
+        var list = await LoadFullForResponseAsync(id, userId, ownerOnly: true);
 
         if (request.Name is not null) list.Name = request.Name;
 
@@ -76,7 +64,7 @@ public class ShoppingListService(AppDbContext db)
             await SetMealsInternalAsync(list, request.MealIds, userId);
 
         await db.SaveChangesAsync();
-        return await ToResponseAsync(list, userId);
+        return BuildResponse(list, userId);
     }
 
     public async Task DeleteAsync(Guid id, Guid userId)
@@ -89,10 +77,10 @@ public class ShoppingListService(AppDbContext db)
     public async Task<ShoppingListResponse> SetMealsAsync(Guid id, Guid userId, SetShoppingListMealsRequest request)
     {
         // Both owner and members can change selected meals
-        var list = await GetListWithAccessAsync(id, userId);
+        var list = await LoadFullForResponseAsync(id, userId, ownerOnly: false);
         await SetMealsInternalAsync(list, request.MealIds, userId);
         await db.SaveChangesAsync();
-        return await ToResponseAsync(list, userId);
+        return BuildResponse(list, userId);
     }
 
     public async Task<ShoppingListInviteResponse> GenerateInviteAsync(Guid id, Guid userId)
@@ -143,7 +131,8 @@ public class ShoppingListService(AppDbContext db)
         });
 
         await db.SaveChangesAsync();
-        return await GetByIdAsync(list.Id, userId);
+        var full = await LoadFullForResponseAsync(list.Id, userId, ownerOnly: false);
+        return BuildResponse(full, userId);
     }
 
     public async Task LeaveAsync(Guid id, Guid userId)
@@ -174,20 +163,33 @@ public class ShoppingListService(AppDbContext db)
 
     // ─── Helpers ──────────────────────────────────────────────
 
-    private async Task<ShoppingList> GetListWithAccessAsync(Guid id, Guid userId)
+    private async Task<ShoppingList> LoadFullForResponseAsync(Guid id, Guid userId, bool ownerOnly)
     {
         var list = await db.ShoppingLists
             .Include(sl => sl.Owner)
             .Include(sl => sl.Members).ThenInclude(m => m.User)
-            .Include(sl => sl.Meals)
+            .Include(sl => sl.Meals).ThenInclude(slm => slm.Meal)
+                .ThenInclude(m => m.MealSlot)
+            .Include(sl => sl.Meals).ThenInclude(slm => slm.Meal)
+                .ThenInclude(m => m.Foods).ThenInclude(mf => mf.Food)
+            .Include(sl => sl.Meals).ThenInclude(slm => slm.Meal)
+                .ThenInclude(m => m.DayPlan)
             .FirstOrDefaultAsync(sl => sl.Id == id);
 
         if (list is null)
             throw new ApiException("Lista de compras não encontrada", 404);
 
-        var hasAccess = list.OwnerId == userId || list.Members.Any(m => m.UserId == userId);
-        if (!hasAccess)
-            throw new ApiException("Acesso negado", 403);
+        if (ownerOnly)
+        {
+            if (list.OwnerId != userId)
+                throw new ApiException("Apenas o dono pode realizar essa ação", 403);
+        }
+        else
+        {
+            var hasAccess = list.OwnerId == userId || list.Members.Any(m => m.UserId == userId);
+            if (!hasAccess)
+                throw new ApiException("Acesso negado", 403);
+        }
 
         return list;
     }
@@ -217,13 +219,15 @@ public class ShoppingListService(AppDbContext db)
             .Select(m => m.Id)
             .ToListAsync();
 
-        var validIds = mealIds.Where(id => accessibleMealIds.Contains(id)).ToList();
+        var distinctRequested = mealIds.Distinct().ToList();
+        if (accessibleMealIds.Count != distinctRequested.Count)
+            throw new ApiException("Refeições inválidas na seleção", 400);
 
         // Remove existing
         db.ShoppingListMeals.RemoveRange(list.Meals);
 
         // Add new
-        foreach (var mealId in validIds.Distinct())
+        foreach (var mealId in distinctRequested)
         {
             db.ShoppingListMeals.Add(new ShoppingListMeal
             {
@@ -233,22 +237,9 @@ public class ShoppingListService(AppDbContext db)
         }
     }
 
-    private async Task<ShoppingListResponse> ToResponseAsync(ShoppingList list, Guid userId)
+    private static ShoppingListResponse BuildResponse(ShoppingList list, Guid userId)
     {
-        // Reload with full graph to compute items
-        var fullList = await db.ShoppingLists
-            .Include(sl => sl.Owner)
-            .Include(sl => sl.Members).ThenInclude(m => m.User)
-            .Include(sl => sl.Meals).ThenInclude(slm => slm.Meal)
-                .ThenInclude(m => m.MealSlot)
-            .Include(sl => sl.Meals).ThenInclude(slm => slm.Meal)
-                .ThenInclude(m => m.Foods).ThenInclude(mf => mf.Food)
-            .Include(sl => sl.Meals).ThenInclude(slm => slm.Meal)
-                .ThenInclude(m => m.DayPlan)
-            .FirstAsync(sl => sl.Id == list.Id);
-
-        // Aggregate foods across all selected meals
-        var aggregated = fullList.Meals
+        var aggregated = list.Meals
             .SelectMany(slm => slm.Meal.Foods)
             .GroupBy(mf => mf.FoodId)
             .Select(g => new ShoppingListItemResponse(
@@ -261,20 +252,20 @@ public class ShoppingListService(AppDbContext db)
             .ToList();
 
         return new ShoppingListResponse(
-            fullList.Id,
-            fullList.Name,
-            fullList.OwnerId,
-            fullList.Owner.Name,
-            fullList.OwnerId == userId,
-            fullList.Members.Select(m => new ShoppingListMemberResponse(
+            list.Id,
+            list.Name,
+            list.OwnerId,
+            list.Owner.Name,
+            list.OwnerId == userId,
+            list.Members.Select(m => new ShoppingListMemberResponse(
                 m.UserId, m.User.Name, m.User.Email, m.JoinedAt
             )).ToList(),
-            fullList.Meals.Select(slm => slm.MealId).ToList(),
+            list.Meals.Select(slm => slm.MealId).ToList(),
             aggregated,
-            fullList.OwnerId == userId ? fullList.InviteToken : null,
-            fullList.OwnerId == userId ? fullList.InviteExpiresAt : null,
-            fullList.CreatedAt,
-            fullList.UpdatedAt
+            list.OwnerId == userId ? list.InviteToken : null,
+            list.OwnerId == userId ? list.InviteExpiresAt : null,
+            list.CreatedAt,
+            list.UpdatedAt
         );
     }
 

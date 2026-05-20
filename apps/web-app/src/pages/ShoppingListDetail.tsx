@@ -5,25 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useMealPlans } from '@/hooks/useMealPlans';
 import { ShoppingList, WeekDay } from '@/types';
+import { weekDays } from '@/lib/constants';
 import { shoppingListService } from '@/services/shoppingListService';
 import { toast } from 'sonner';
-
-const weekDays: { value: WeekDay; label: string }[] = [
-  { value: 'segunda', label: 'Segunda' },
-  { value: 'terca', label: 'Terça' },
-  { value: 'quarta', label: 'Quarta' },
-  { value: 'quinta', label: 'Quinta' },
-  { value: 'sexta', label: 'Sexta' },
-  { value: 'sabado', label: 'Sábado' },
-  { value: 'domingo', label: 'Domingo' },
-];
 
 export default function ShoppingListDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mealPlans } = useMealPlan();
+  const { mealPlans } = useMealPlans();
   const [list, setList] = useState<ShoppingList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectionOpen, setSelectionOpen] = useState(false);
@@ -156,8 +147,8 @@ export default function ShoppingListDetail() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setSelectionOpen(true)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button className="w-full sm:w-auto" onClick={() => setSelectionOpen(true)}>
           <ShoppingCart className="mr-2 h-4 w-4" />
           Selecionar Refeições ({list.selectedMealIds.length})
         </Button>
@@ -280,7 +271,7 @@ export default function ShoppingListDetail() {
                                 {dayPlan.meals.map((meal) => (
                                   <label
                                     key={meal.id}
-                                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-secondary/50 rounded px-2 py-1"
+                                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-secondary/50 rounded px-2 py-2 min-h-[44px]"
                                   >
                                     <Checkbox
                                       checked={selectedMealIds.has(meal.id)}

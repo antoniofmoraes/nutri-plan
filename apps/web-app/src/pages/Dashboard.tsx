@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Flame, Beef, Wheat, Droplets, Plus } from 'lucide-react';
-import { useMealPlan } from '@/contexts/MealPlanContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMealPlans } from '@/hooks/useMealPlans';
+import { calculateDayMacros, calculateMealMacros } from '@/lib/macros';
 import { MacroCard } from '@/components/dashboard/MacroCard';
 import { MealCard } from '@/components/dashboard/MealCard';
 import { MacroRing } from '@/components/ui/macro-ring';
@@ -9,17 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WeekDay } from '@/types';
+import { weekDays } from '@/lib/constants';
 import { Link } from 'react-router-dom';
-
-const weekDays: { value: WeekDay; label: string; short: string }[] = [
-  { value: 'segunda', label: 'Segunda-feira', short: 'Seg' },
-  { value: 'terca', label: 'Terça-feira', short: 'Ter' },
-  { value: 'quarta', label: 'Quarta-feira', short: 'Qua' },
-  { value: 'quinta', label: 'Quinta-feira', short: 'Qui' },
-  { value: 'sexta', label: 'Sexta-feira', short: 'Sex' },
-  { value: 'sabado', label: 'Sábado', short: 'Sáb' },
-  { value: 'domingo', label: 'Domingo', short: 'Dom' },
-];
 
 function getTodayWeekDay(): WeekDay {
   const dayIndex = new Date().getDay();
@@ -29,8 +21,9 @@ function getTodayWeekDay(): WeekDay {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { mealPlans, calculateDayMacros, calculateMealMacros } = useMealPlan();
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(mealPlans[0]?.id || '');
+  const { mealPlans } = useMealPlans();
+  const mainPlan = mealPlans.find(p => p.isMain);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(mainPlan?.id || mealPlans[0]?.id || '');
   const [selectedDay, setSelectedDay] = useState<WeekDay>(getTodayWeekDay());
 
   const selectedPlan = mealPlans.find(p => p.id === selectedPlanId);
@@ -39,7 +32,7 @@ export default function Dashboard() {
   const dayMacros = useMemo(() => {
     if (!dayPlan) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     return calculateDayMacros(dayPlan, selectedPlan);
-  }, [dayPlan, selectedPlan, calculateDayMacros]);
+  }, [dayPlan, selectedPlan]);
 
   const todayLabel = weekDays.find(d => d.value === selectedDay)?.label || '';
 
@@ -126,12 +119,12 @@ export default function Dashboard() {
 
           {/* Day Tabs */}
           <Tabs value={selectedDay} onValueChange={(v) => setSelectedDay(v as WeekDay)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 bg-muted p-1">
+            <TabsList className="grid w-full grid-cols-7 bg-muted p-1 h-auto">
               {weekDays.map(day => (
                 <TabsTrigger
                   key={day.value}
                   value={day.value}
-                  className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  className="text-xs sm:text-sm min-h-[44px] px-1 sm:px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
                   <span className="hidden sm:inline">{day.short}</span>
                   <span className="sm:hidden">{day.short.slice(0, 1)}</span>

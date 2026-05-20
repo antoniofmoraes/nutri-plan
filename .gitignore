@@ -87,3 +87,5 @@ appsettings.Development.json
 # bun.lockb
 
 .**/
+!.github/
+!.github/**

@@ -1,15 +1,30 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, ChevronRight, Target } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronRight, Target, Star } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useMealPlans } from '@/hooks/useMealPlans';
+import { calculatePlanMacros } from '@/lib/macros';
 import { MealPlan, PlanGoal } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+
+const planSchema = z.object({
+  name: z.string().min(1, 'Nome obrigatório'),
+  goal: z.enum(['manter', 'ganhar', 'emagrecer']),
+  dailyCalories: z.coerce.number().min(1, 'Informe as calorias diárias'),
+  dailyProtein: z.coerce.number().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  dailyCarbs: z.coerce.number().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  dailyFat: z.coerce.number().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+});
+
+type PlanFormData = z.infer<typeof planSchema>;
 
 const goalLabels: Record<PlanGoal, string> = {
   manter: 'Manutenção',
@@ -24,55 +39,43 @@ const goalColors: Record<PlanGoal, string> = {
 };
 
 export default function MealPlans() {
-  const { mealPlans, addMealPlan, updateMealPlan, deleteMealPlan, calculatePlanMacros } = useMealPlan();
+  const { mealPlans, addMealPlan, updateMealPlan, deleteMealPlan, setMainPlan } = useMealPlans();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MealPlan | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    goal: 'manter' as PlanGoal,
-    dailyCalories: 2000,
-    dailyProtein: undefined as number | undefined,
-    dailyCarbs: undefined as number | undefined,
-    dailyFat: undefined as number | undefined,
+
+  const form = useForm<PlanFormData>({
+    resolver: zodResolver(planSchema),
+    defaultValues: { name: '', goal: 'manter', dailyCalories: 2000, dailyProtein: '', dailyCarbs: '', dailyFat: '' },
   });
 
   const handleOpenCreate = () => {
     setEditingPlan(null);
-    setFormData({
-      name: '',
-      goal: 'manter',
-      dailyCalories: 2000,
-      dailyProtein: undefined,
-      dailyCarbs: undefined,
-      dailyFat: undefined,
-    });
+    form.reset({ name: '', goal: 'manter', dailyCalories: 2000, dailyProtein: '', dailyCarbs: '', dailyFat: '' });
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (plan: MealPlan) => {
     setEditingPlan(plan);
-    setFormData({
+    form.reset({
       name: plan.name,
       goal: plan.goal,
       dailyCalories: plan.dailyCalories,
-      dailyProtein: plan.dailyProtein ?? undefined,
-      dailyCarbs: plan.dailyCarbs ?? undefined,
-      dailyFat: plan.dailyFat ?? undefined,
+      dailyProtein: plan.dailyProtein ?? '',
+      dailyCarbs: plan.dailyCarbs ?? '',
+      dailyFat: plan.dailyFat ?? '',
     });
     setDialogOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (!formData.name.trim() || !formData.dailyCalories) return;
-
+  const onSubmit = (data: PlanFormData) => {
     const planData = {
-      name: formData.name,
-      goal: formData.goal,
-      dailyCalories: formData.dailyCalories,
-      dailyProtein: formData.dailyProtein || null,
-      dailyCarbs: formData.dailyCarbs || null,
-      dailyFat: formData.dailyFat || null,
+      name: data.name,
+      goal: data.goal,
+      dailyCalories: data.dailyCalories,
+      dailyProtein: data.dailyProtein || null,
+      dailyCarbs: data.dailyCarbs || null,
+      dailyFat: data.dailyFat || null,
     };
 
     if (editingPlan) {
@@ -117,21 +120,23 @@ export default function MealPlans() {
                 {editingPlan ? 'Editar Plano' : 'Novo Plano Alimentar'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="plan-name">Nome do Plano</Label>
                 <Input
                   id="plan-name"
                   placeholder="Ex: Dieta de Verão"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  {...form.register('name')}
                 />
+                {form.formState.errors.name && (
+                  <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="plan-goal">Objetivo</Label>
                 <Select
-                  value={formData.goal}
-                  onValueChange={(v) => setFormData({ ...formData, goal: v as PlanGoal })}
+                  value={form.watch('goal')}
+                  onValueChange={(v) => form.setValue('goal', v as PlanGoal)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -148,20 +153,23 @@ export default function MealPlans() {
                 <Input
                   id="daily-calories"
                   type="number"
+                  inputMode="decimal"
                   placeholder="Ex: 2000"
-                  value={formData.dailyCalories}
-                  onChange={(e) => setFormData({ ...formData, dailyCalories: parseInt(e.target.value) || 0 })}
+                  {...form.register('dailyCalories')}
                 />
+                {form.formState.errors.dailyCalories && (
+                  <p className="text-sm text-destructive">{form.formState.errors.dailyCalories.message}</p>
+                )}
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="daily-protein">Proteína (g)</Label>
                   <Input
                     id="daily-protein"
                     type="number"
+                    inputMode="decimal"
                     placeholder="Ex: 150"
-                    value={formData.dailyProtein ?? ''}
-                    onChange={(e) => setFormData({ ...formData, dailyProtein: e.target.value ? parseInt(e.target.value) : undefined })}
+                    {...form.register('dailyProtein')}
                   />
                 </div>
                 <div className="space-y-2">
@@ -169,9 +177,9 @@ export default function MealPlans() {
                   <Input
                     id="daily-carbs"
                     type="number"
+                    inputMode="decimal"
                     placeholder="Ex: 250"
-                    value={formData.dailyCarbs ?? ''}
-                    onChange={(e) => setFormData({ ...formData, dailyCarbs: e.target.value ? parseInt(e.target.value) : undefined })}
+                    {...form.register('dailyCarbs')}
                   />
                 </div>
                 <div className="space-y-2">
@@ -179,21 +187,21 @@ export default function MealPlans() {
                   <Input
                     id="daily-fat"
                     type="number"
+                    inputMode="decimal"
                     placeholder="Ex: 65"
-                    value={formData.dailyFat ?? ''}
-                    onChange={(e) => setFormData({ ...formData, dailyFat: e.target.value ? parseInt(e.target.value) : undefined })}
+                    {...form.register('dailyFat')}
                   />
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button onClick={handleSubmit} className="bg-gradient-primary hover:opacity-90">
-                {editingPlan ? 'Salvar' : 'Criar Plano'}
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit" className="bg-gradient-primary hover:opacity-90">
+                  {editingPlan ? 'Salvar' : 'Criar Plano'}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -225,12 +233,28 @@ export default function MealPlans() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="font-display text-lg">{plan.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="font-display text-lg">{plan.name}</CardTitle>
+                        {plan.isMain && (
+                          <Star className="h-4 w-4 fill-favorite text-favorite" />
+                        )}
+                      </div>
                       <span className={cn('mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium', goalColors[plan.goal])}>
                         {goalLabels[plan.goal]}
                       </span>
                     </div>
                     <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={plan.isMain ? 'Remover como principal' : 'Definir como principal'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMainPlan(plan.isMain ? null : plan.id);
+                        }}
+                      >
+                        <Star className={cn('h-4 w-4', plan.isMain ? 'fill-favorite text-favorite' : '')} />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

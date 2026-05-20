@@ -20,12 +20,7 @@ public class PresetMealService(AppDbContext db)
 
     public async Task<PresetMealResponse> GetByIdAsync(Guid id, Guid userId)
     {
-        var preset = await GetPresetsQuery().FirstOrDefaultAsync(pm => pm.Id == id);
-        if (preset is null)
-            throw new ApiException("Refeição pronta não encontrada", 404);
-        if (preset.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
-
+        var preset = await GetPresetWithOwnership(id, userId, includeFoods: true);
         return ToResponse(preset);
     }
 
@@ -40,17 +35,12 @@ public class PresetMealService(AppDbContext db)
         db.PresetMeals.Add(preset);
         await db.SaveChangesAsync();
 
-        var created = await GetPresetsQuery().FirstAsync(pm => pm.Id == preset.Id);
-        return ToResponse(created);
+        return ToResponse(preset);
     }
 
     public async Task<PresetMealResponse> UpdateAsync(Guid id, Guid userId, UpdatePresetMealRequest request)
     {
-        var preset = await GetPresetsQuery().FirstOrDefaultAsync(pm => pm.Id == id);
-        if (preset is null)
-            throw new ApiException("Refeição pronta não encontrada", 404);
-        if (preset.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        var preset = await GetPresetWithOwnership(id, userId, includeFoods: true);
 
         if (request.Name is not null) preset.Name = request.Name;
 
@@ -60,23 +50,14 @@ public class PresetMealService(AppDbContext db)
 
     public async Task DeleteAsync(Guid id, Guid userId)
     {
-        var preset = await db.PresetMeals.FindAsync(id);
-        if (preset is null)
-            throw new ApiException("Refeição pronta não encontrada", 404);
-        if (preset.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
-
+        var preset = await GetPresetWithOwnership(id, userId);
         db.PresetMeals.Remove(preset);
         await db.SaveChangesAsync();
     }
 
     public async Task<PresetMealFoodResponse> AddFoodAsync(Guid presetId, Guid userId, AddPresetMealFoodRequest request)
     {
-        var preset = await db.PresetMeals.FindAsync(presetId);
-        if (preset is null)
-            throw new ApiException("Refeição pronta não encontrada", 404);
-        if (preset.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        await GetPresetWithOwnership(presetId, userId);
 
         var food = await db.Foods.FindAsync(request.FoodId);
         if (food is null)
@@ -101,11 +82,7 @@ public class PresetMealService(AppDbContext db)
 
     public async Task<PresetMealFoodResponse> UpdateFoodAsync(Guid presetId, Guid foodId, Guid userId, Guid? newFoodId, double? quantity)
     {
-        var preset = await db.PresetMeals.FindAsync(presetId);
-        if (preset is null)
-            throw new ApiException("Refeição pronta não encontrada", 404);
-        if (preset.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        await GetPresetWithOwnership(presetId, userId);
 
         var entry = await db.PresetMealFoods
             .Include(pmf => pmf.Food)
@@ -136,11 +113,7 @@ public class PresetMealService(AppDbContext db)
 
     public async Task RemoveFoodAsync(Guid presetId, Guid foodId, Guid userId)
     {
-        var preset = await db.PresetMeals.FindAsync(presetId);
-        if (preset is null)
-            throw new ApiException("Refeição pronta não encontrada", 404);
-        if (preset.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        await GetPresetWithOwnership(presetId, userId);
 
         var entry = await db.PresetMealFoods
             .FirstOrDefaultAsync(pmf => pmf.PresetMealId == presetId && pmf.FoodId == foodId);
@@ -155,40 +128,34 @@ public class PresetMealService(AppDbContext db)
     {
         if (targetMealIds.Count == 0) return;
 
-        var preset = await db.PresetMeals
-            .Include(pm => pm.Foods)
-            .FirstOrDefaultAsync(pm => pm.Id == presetId);
+        var preset = await GetPresetWithOwnership(presetId, userId, includeFoods: true);
+
+        var targets = await db.Meals
+            .WithOwnership()
+            .Include(m => m.Foods)
+            .Where(m => targetMealIds.Contains(m.Id))
+            .ToListAsync();
+
+        var items = preset.Foods.Select(pf => (pf.FoodId, pf.Quantity)).ToList();
+
+        foreach (var target in targets)
+        {
+            target.AssertOwnership(userId);
+            db.ReplaceFoods(target, items);
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private async Task<PresetMeal> GetPresetWithOwnership(Guid id, Guid userId, bool includeFoods = false)
+    {
+        var query = includeFoods ? GetPresetsQuery() : db.PresetMeals.AsQueryable();
+        var preset = await query.FirstOrDefaultAsync(pm => pm.Id == id);
         if (preset is null)
             throw new ApiException("Refeição pronta não encontrada", 404);
         if (preset.UserId != userId)
             throw new ApiException("Acesso negado", 403);
-
-        var targets = await db.Meals
-            .Include(m => m.Foods)
-            .Include(m => m.DayPlan).ThenInclude(dp => dp.MealPlan)
-            .Where(m => targetMealIds.Contains(m.Id))
-            .ToListAsync();
-
-        foreach (var target in targets)
-        {
-            if (target.DayPlan.MealPlan.UserId != userId)
-                throw new ApiException("Acesso negado a uma refeição", 403);
-
-            db.MealFoods.RemoveRange(target.Foods);
-            target.IsCheat = false;
-
-            foreach (var pf in preset.Foods)
-            {
-                db.MealFoods.Add(new MealFood
-                {
-                    MealId = target.Id,
-                    FoodId = pf.FoodId,
-                    Quantity = pf.Quantity
-                });
-            }
-        }
-
-        await db.SaveChangesAsync();
+        return preset;
     }
 
     private IQueryable<PresetMeal> GetPresetsQuery() =>

@@ -36,6 +36,7 @@ interface ApiMealPlan {
   dailyProtein?: number | null;
   dailyCarbs?: number | null;
   dailyFat?: number | null;
+  isMain: boolean;
   slots: ApiMealSlot[];
   days: ApiDayPlan[];
   createdAt: string;
@@ -51,6 +52,7 @@ function transformMealPlan(apiPlan: ApiMealPlan): MealPlan {
     dailyProtein: apiPlan.dailyProtein,
     dailyCarbs: apiPlan.dailyCarbs,
     dailyFat: apiPlan.dailyFat,
+    isMain: apiPlan.isMain,
     slots: apiPlan.slots,
     days: apiPlan.days.map((day) => ({
       day: day.day,
@@ -128,6 +130,10 @@ export const mealPlanService = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/api/meal-plans/${id}`);
+  },
+
+  async setMainPlan(planId: string | null): Promise<void> {
+    await api.put('/api/users/me/main-plan', { planId });
   },
 
   // Slot operations (plan-level)

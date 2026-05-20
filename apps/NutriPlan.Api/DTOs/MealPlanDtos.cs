@@ -83,6 +83,7 @@ public record MealPlanResponse(
     int? DailyProtein,
     int? DailyCarbs,
     int? DailyFat,
+    bool IsMain,
     List<MealSlotResponse> Slots,
     List<DayPlanResponse> Days,
     DateTime CreatedAt,

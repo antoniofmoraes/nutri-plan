@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Apple, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { AuthShell } from '@/components/layout/AuthShell';
+import { PortioMark, PortioWordmark } from '@/components/layout/PortioLogo';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -14,23 +16,18 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { register, error, clearError } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const success = await register(name, email, password);
       if (success) {
-        toast({
-          title: 'Conta criada!',
-          description: 'Bem-vindo ao NutriPlan.',
-        });
+        toast.success('Conta criada!');
         navigate('/');
       }
-    } catch (err) {
-      // error already captured by AuthContext
+    } catch {
+      // error captured by AuthContext
     } finally {
       setLoading(false);
     }
@@ -38,120 +35,115 @@ export default function Register() {
 
   useEffect(() => {
     if (error) {
-      toast({
-        title: 'Erro no cadastro',
-        description: error,
-        variant: 'destructive',
-      });
+      toast.error(error);
       clearError();
     }
-  }, [error, toast, clearError]);
+  }, [error, clearError]);
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Visual */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-primary items-center justify-center p-12">
-        <div className="max-w-md text-center text-primary-foreground">
-          <h2 className="text-4xl font-bold font-display">
-            Comece sua jornada nutricional
-          </h2>
-          <p className="mt-4 text-lg opacity-90">
-            Monte planos alimentares personalizados e acompanhe seu progresso semana a semana.
-          </p>
+    <AuthShell side="left">
+      <div>
+        <div className="flex items-center gap-2.5 mb-9">
+          <PortioMark size={28} />
+          <PortioWordmark />
         </div>
+        <div className="eyebrow mb-2">Criar conta</div>
+        <h1 className="text-[30px] font-bold tracking-[-0.02em] leading-[1.1]">
+          Comece em segundos.
+        </h1>
+        <p className="text-muted mt-2">
+          Nenhum cartão, nenhum coach. Só uma ferramenta limpa.
+        </p>
       </div>
 
-      {/* Right side - Form */}
-      <div className="flex flex-1 flex-col justify-center px-8 py-12 lg:px-16">
-        <div className="mx-auto w-full max-w-sm">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-              <Apple className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <span className="font-display text-2xl font-bold text-foreground">
-              NutriPlan
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        <div>
+          <label className="label-mono">Nome</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted flex items-center">
+              <User size={16} strokeWidth={1.6} />
             </span>
+            <Input
+              type="text"
+              placeholder="Seu nome"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="pl-[38px]"
+              required
+            />
           </div>
-
-          <h1 className="text-3xl font-bold text-foreground font-display">
-            Crie sua conta
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Comece a organizar sua alimentação agora
-          </p>
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Seu nome"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
-              disabled={loading}
-            >
-              {loading ? 'Criando conta...' : 'Criar conta'}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Já tem uma conta?{' '}
-            <Link
-              to="/login"
-              className="font-medium text-primary hover:underline"
-            >
-              Faça login
-            </Link>
-          </p>
         </div>
+
+        <div>
+          <label className="label-mono">Email</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted flex items-center">
+              <Mail size={16} strokeWidth={1.6} />
+            </span>
+            <Input
+              type="email"
+              placeholder="voce@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-[38px]"
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="label-mono">Senha</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted flex items-center">
+              <Lock size={16} strokeWidth={1.6} />
+            </span>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-[38px]"
+              required
+              minLength={6}
+            />
+          </div>
+          <div className="text-xs text-muted mt-1.5">Mínimo 6 caracteres.</div>
+        </div>
+
+        <Button
+          variant="acc"
+          type="submit"
+          disabled={loading}
+          className="h-11 text-sm mt-1.5 w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Criando…
+            </>
+          ) : (
+            <>
+              Criar conta
+              <ArrowRight size={15} />
+            </>
+          )}
+        </Button>
+      </form>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-muted text-xs">ou</span>
+        <div className="h-px flex-1 bg-border" />
       </div>
-    </div>
+
+      <GoogleLoginButton />
+
+      <div className="text-center text-muted text-[13px] mt-1">
+        Já tem conta?{' '}
+        <Link to="/login" className="text-ink font-medium hover:underline">
+          Entrar
+        </Link>
+      </div>
+    </AuthShell>
   );
 }

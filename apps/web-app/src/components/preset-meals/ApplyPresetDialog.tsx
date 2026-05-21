@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { weekDays } from '@/lib/constants';
 import type { MealPlan } from '@/types';
@@ -59,19 +61,19 @@ export function ApplyPresetDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent lg>
         <DialogHeader>
-          <DialogTitle className="font-display">Aplicar Refeição Pronta</DialogTitle>
-          <p className="text-xs text-muted-foreground">
+          <DialogTitle>Aplicar refeição pronta</DialogTitle>
+          <DialogDescription>
             Selecione em quais refeições da semana deseja aplicar. Os alimentos existentes serão substituídos.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Plano alimentar</Label>
+        <DialogBody>
+          <div>
+            <label className="label-mono">Plano alimentar</label>
             <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-10 w-full rounded-[var(--r-md)] border border-line bg-surface px-3 py-2 text-[13.5px] focus:outline-none focus:border-ink transition-[border-color] duration-[120ms]"
               value={selectedPlanId}
               onChange={(e) => handleSelectPlan(e.target.value)}
             >
@@ -86,15 +88,15 @@ export function ApplyPresetDialog({
               {/* Mobile */}
               <div className="space-y-3 md:hidden">
                 {orderedSlots.map(slot => (
-                  <div key={slot.id} className="rounded-lg border p-3">
-                    <p className="text-sm font-semibold mb-2">{slot.name}</p>
+                  <div key={slot.id} className="rounded-[var(--r-md)] border border-line p-3">
+                    <p className="text-[13px] font-semibold mb-2">{slot.name}</p>
                     <div className="grid grid-cols-2 gap-2">
                       {weekDays.map(day => {
                         const dayPlan = selectedPlan.days.find(d => d.day === day.value);
                         const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
                         if (!meal) {
                           return (
-                            <div key={day.value} className="flex items-center gap-2 px-2 py-2 text-sm text-muted-foreground">
+                            <div key={day.value} className="flex items-center gap-2 px-2 py-2 text-[12.5px] text-muted">
                               <span className="w-10">{day.short}</span>
                               <span>—</span>
                             </div>
@@ -103,7 +105,7 @@ export function ApplyPresetDialog({
                         return (
                           <label
                             key={day.value}
-                            className="flex items-center gap-2 rounded-md border px-2 py-2 text-sm cursor-pointer hover:bg-secondary min-h-[44px]"
+                            className="flex items-center gap-2 rounded-[var(--r-sm)] border border-line px-2 py-2 text-[12.5px] cursor-pointer hover:bg-surface-alt min-h-[44px] transition-[background] duration-[120ms]"
                           >
                             <Checkbox
                               checked={selectedMealIds.has(meal.id)}
@@ -119,26 +121,26 @@ export function ApplyPresetDialog({
               </div>
 
               {/* Desktop */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
+              <div className="hidden md:block overflow-x-auto border border-line rounded-[var(--r-md)]">
+                <table className="w-full border-collapse text-[12.5px]">
                   <thead>
-                    <tr className="border-b">
-                      <th className="p-2 text-left text-xs font-semibold text-muted-foreground">Refeição</th>
+                    <tr className="border-b border-line bg-surface-alt">
+                      <th className="p-2.5 text-left eyebrow">Refeição</th>
                       {weekDays.map(d => (
-                        <th key={d.value} className="p-2 text-center text-xs font-semibold text-muted-foreground">{d.short}</th>
+                        <th key={d.value} className="p-2.5 text-center eyebrow">{d.short}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {orderedSlots.map(slot => (
-                      <tr key={slot.id} className="border-b last:border-b-0">
-                        <td className="p-2 text-xs font-medium whitespace-nowrap">{slot.name}</td>
+                      <tr key={slot.id} className="border-b border-line last:border-b-0">
+                        <td className="p-2.5 font-medium whitespace-nowrap">{slot.name}</td>
                         {weekDays.map(day => {
                           const dayPlan = selectedPlan.days.find(d => d.day === day.value);
                           const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
-                          if (!meal) return <td key={day.value} className="p-2 text-center"><span className="text-muted-foreground">—</span></td>;
+                          if (!meal) return <td key={day.value} className="p-2.5 text-center"><span className="text-muted">—</span></td>;
                           return (
-                            <td key={day.value} className="p-2 text-center">
+                            <td key={day.value} className="p-2.5 text-center">
                               <Checkbox
                                 checked={selectedMealIds.has(meal.id)}
                                 onCheckedChange={() => toggleMealId(meal.id)}
@@ -153,15 +155,15 @@ export function ApplyPresetDialog({
               </div>
             </>
           )}
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
+            <Button variant="ghost">Cancelar</Button>
           </DialogClose>
           <Button
+            variant="acc"
             onClick={handleApply}
-            className="bg-gradient-primary"
             disabled={selectedMealIds.size === 0}
           >
             Aplicar ({selectedMealIds.size})

@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, ChevronRight, Target, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog, DialogContent, DialogHeader, DialogBody, DialogTitle, DialogDescription,
+  DialogTrigger, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMealPlans } from '@/hooks/useMealPlans';
 import { calculatePlanMacros } from '@/lib/macros';
 import { MealPlan, PlanGoal } from '@/types';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { CalendarRange } from 'lucide-react';
 
 const planSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -32,10 +34,10 @@ const goalLabels: Record<PlanGoal, string> = {
   emagrecer: 'Emagrecimento',
 };
 
-const goalColors: Record<PlanGoal, string> = {
-  manter: 'bg-info/10 text-info',
-  ganhar: 'bg-success/10 text-success',
-  emagrecer: 'bg-accent/10 text-accent',
+const goalStyle: Record<PlanGoal, { bg: string; fg: string }> = {
+  manter: { bg: 'color-mix(in oklab, var(--m-pro) 14%, transparent)', fg: 'var(--m-pro)' },
+  emagrecer: { bg: 'color-mix(in oklab, var(--m-cal) 14%, transparent)', fg: 'var(--m-cal)' },
+  ganhar: { bg: 'color-mix(in oklab, var(--m-fat) 14%, transparent)', fg: 'var(--m-fat)' },
 };
 
 export default function MealPlans() {
@@ -43,6 +45,7 @@ export default function MealPlans() {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MealPlan | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
@@ -77,7 +80,6 @@ export default function MealPlans() {
       dailyCarbs: data.dailyCarbs || null,
       dailyFat: data.dailyFat || null,
     };
-
     if (editingPlan) {
       updateMealPlan(editingPlan.id, planData);
     } else {
@@ -85,8 +87,6 @@ export default function MealPlans() {
     }
     setDialogOpen(false);
   };
-
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const handleConfirmDelete = () => {
     if (deleteTarget) {
@@ -96,224 +96,215 @@ export default function MealPlans() {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-display">
-            Planos Alimentares
+          <div className="eyebrow mb-2">Coleção</div>
+          <h1 className="text-[32px] font-bold tracking-[-0.02em] leading-[1.1]">
+            Planos alimentares
           </h1>
-          <p className="mt-1 text-muted-foreground">
-            Gerencie seus planos semanais de alimentação
+          <p className="text-muted mt-2 max-w-[56ch] text-sm">
+            Crie e gerencie diferentes planos — para cutting, bulking ou manutenção.
+            Marque um como principal para vê-lo na dashboard.
           </p>
         </div>
+        <Button variant="acc" onClick={handleOpenCreate}>
+          <Plus size={16} />
+          Novo plano
+        </Button>
+      </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenCreate} className="bg-gradient-primary hover:opacity-90">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Plano
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="font-display">
-                {editingPlan ? 'Editar Plano' : 'Novo Plano Alimentar'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="plan-name">Nome do Plano</Label>
-                <Input
-                  id="plan-name"
-                  placeholder="Ex: Dieta de Verão"
-                  {...form.register('name')}
-                />
+      {/* Grid or empty state */}
+      {mealPlans.length === 0 ? (
+        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
+            <CalendarRange size={26} strokeWidth={1.6} />
+          </div>
+          <h3 className="text-[19px] font-semibold mb-1.5">Nenhum plano alimentar</h3>
+          <p className="text-muted max-w-[360px] mb-5">
+            Crie seu primeiro plano para começar a organizar suas refeições.
+          </p>
+          <Button variant="acc" onClick={handleOpenCreate}>
+            <Plus size={16} />
+            Criar primeiro plano
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3.5">
+          {mealPlans.map((plan) => (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              onOpen={() => navigate(`/planos/${plan.id}`)}
+              onSetMain={() => setMainPlan(plan.isMain ? null : plan.id)}
+              onEdit={() => handleOpenEdit(plan)}
+              onDelete={() => setDeleteTarget(plan.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Create/Edit dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingPlan ? 'Editar plano' : 'Novo plano alimentar'}</DialogTitle>
+            <DialogDescription>
+              Defina meta calórica e macros. Você pode editar depois.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogBody>
+              <div>
+                <label className="label-mono">Nome</label>
+                <Input placeholder="Ex: Cutting março" {...form.register('name')} />
                 {form.formState.errors.name && (
-                  <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+                  <p className="text-xs text-danger mt-1.5">{form.formState.errors.name.message}</p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="plan-goal">Objetivo</Label>
+              <div>
+                <label className="label-mono">Objetivo</label>
                 <Select
                   value={form.watch('goal')}
                   onValueChange={(v) => form.setValue('goal', v as PlanGoal)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-surface border-line rounded-[var(--r-md)] h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="emagrecer">Emagrecimento</SelectItem>
                     <SelectItem value="manter">Manutenção</SelectItem>
                     <SelectItem value="ganhar">Ganho de Massa</SelectItem>
-                    <SelectItem value="emagrecer">Emagrecimento</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="daily-calories">Calorias Diárias (kcal) *</Label>
-                <Input
-                  id="daily-calories"
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="Ex: 2000"
-                  {...form.register('dailyCalories')}
-                />
+              <div>
+                <label className="label-mono">Calorias diárias (kcal)</label>
+                <Input type="number" inputMode="decimal" placeholder="Ex: 2200" {...form.register('dailyCalories')} />
                 {form.formState.errors.dailyCalories && (
-                  <p className="text-sm text-destructive">{form.formState.errors.dailyCalories.message}</p>
+                  <p className="text-xs text-danger mt-1.5">{form.formState.errors.dailyCalories.message}</p>
                 )}
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="daily-protein">Proteína (g)</Label>
-                  <Input
-                    id="daily-protein"
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="Ex: 150"
-                    {...form.register('dailyProtein')}
-                  />
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="label-mono">Proteína (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="165" {...form.register('dailyProtein')} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="daily-carbs">Carboidratos (g)</Label>
-                  <Input
-                    id="daily-carbs"
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="Ex: 250"
-                    {...form.register('dailyCarbs')}
-                  />
+                <div>
+                  <label className="label-mono">Carbo. (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="240" {...form.register('dailyCarbs')} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="daily-fat">Gordura (g)</Label>
-                  <Input
-                    id="daily-fat"
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="Ex: 65"
-                    {...form.register('dailyFat')}
-                  />
+                <div>
+                  <label className="label-mono">Gordura (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="70" {...form.register('dailyFat')} />
                 </div>
               </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">Cancelar</Button>
-                </DialogClose>
-                <Button type="submit" className="bg-gradient-primary hover:opacity-90">
-                  {editingPlan ? 'Salvar' : 'Criar Plano'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </DialogBody>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost" type="button">Cancelar</Button>
+              </DialogClose>
+              <Button variant="acc" type="submit">
+                {editingPlan ? 'Salvar' : 'Criar plano'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {mealPlans.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Target className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground font-display">
-              Nenhum plano cadastrado
-            </h3>
-            <p className="mt-2 text-center text-muted-foreground">
-              Crie seu primeiro plano alimentar para começar a organizar sua dieta.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {mealPlans.map((plan) => {
-            const macros = calculatePlanMacros(plan);
-            return (
-              <Card
-                key={plan.id}
-                className="group cursor-pointer overflow-hidden transition-all hover:shadow-medium hover:-translate-y-1"
-                onClick={() => navigate(`/planos/${plan.id}`)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="font-display text-lg">{plan.name}</CardTitle>
-                        {plan.isMain && (
-                          <Star className="h-4 w-4 fill-favorite text-favorite" />
-                        )}
-                      </div>
-                      <span className={cn('mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium', goalColors[plan.goal])}>
-                        {goalLabels[plan.goal]}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={plan.isMain ? 'Remover como principal' : 'Definir como principal'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMainPlan(plan.isMain ? null : plan.id);
-                        }}
-                      >
-                        <Star className={cn('h-4 w-4', plan.isMain ? 'fill-favorite text-favorite' : '')} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenEdit(plan);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget(plan.id);
-                        }}
-                        className="hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="space-y-1">
-                      <p>Média diária:</p>
-                      <p className="font-medium text-foreground">
-                        {macros.calories.toFixed(0)} kcal
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation */}
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display">Excluir plano alimentar</DialogTitle>
+            <DialogTitle>Excluir este plano?</DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Tem certeza que deseja excluir este plano? Esta ação não pode ser desfeita.
-          </p>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
+              <Button variant="ghost">Cancelar</Button>
             </DialogClose>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
+            <Button variant="danger" onClick={handleConfirmDelete}>
               Excluir
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function PlanCard({
+  plan,
+  onOpen,
+  onSetMain,
+  onEdit,
+  onDelete,
+}: {
+  plan: MealPlan;
+  onOpen: () => void;
+  onSetMain: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const macros = calculatePlanMacros(plan);
+  const gs = goalStyle[plan.goal];
+
+  return (
+    <div
+      className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden cursor-pointer transition-shadow duration-[120ms] hover:shadow-2"
+      onClick={onOpen}
+    >
+      <div className="p-[22px]">
+        <div className="flex justify-between items-start mb-3.5">
+          <span
+            className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] px-2 py-1 rounded-full leading-none"
+            style={{ background: gs.bg, color: gs.fg }}
+          >
+            {goalLabels[plan.goal]}
+          </span>
+          {plan.isMain ? (
+            <span className="text-accent flex" title="Plano principal">
+              <Star size={18} fill="currentColor" />
+            </span>
+          ) : (
+            <button
+              className="w-[30px] h-[30px] rounded-lg grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-[120ms]"
+              onClick={(e) => { e.stopPropagation(); onSetMain(); }}
+              title="Tornar principal"
+            >
+              <Star size={16} strokeWidth={1.6} />
+            </button>
+          )}
+        </div>
+        <h3 className="text-[18px] font-semibold tracking-[-0.01em] mb-1">{plan.name}</h3>
+        <div className="mono text-[11.5px] text-muted">
+          ~{Math.round(macros.calories).toLocaleString("pt-BR")} kcal/dia · {plan.slots.length} refeições
+        </div>
+      </div>
+      <div className="border-t border-line bg-surface-alt px-3.5 py-2.5 flex justify-between items-center gap-2">
+        <div className="mono text-[10.5px] text-muted flex gap-3 uppercase tracking-[0.06em]">
+          <span>P · {Math.round(macros.protein)}</span>
+          <span>C · {Math.round(macros.carbs)}</span>
+          <span>G · {Math.round(macros.fat)}</span>
+        </div>
+        <div className="flex gap-1">
+          <button
+            className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-ink transition-[background,color] duration-[120ms]"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          >
+            <Edit size={14} strokeWidth={1.6} />
+          </button>
+          <button
+            className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-danger transition-[background,color] duration-[120ms]"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 size={14} strokeWidth={1.6} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

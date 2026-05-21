@@ -1,7 +1,7 @@
 import { Plus, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import type { WeekDay, Meal, MealPlan } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import type { WeekDay, Meal } from '@/types';
 import { weekDays, type ViewProps } from './types';
 import { CopyMealPopover } from './CopyMealPopover';
 
@@ -14,32 +14,32 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
   const orderedSlots = [...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <table className="w-full border-collapse table-fixed">
+    <div className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse table-fixed min-w-[700px]">
           <thead>
-            <tr className="border-b">
-              <th className="w-[10%] p-2 text-center align-middle border-r bg-muted/30" />
+            <tr className="border-b border-line">
+              <th className="w-[10%] p-2.5 text-center align-middle border-r border-line bg-surface-alt" />
               {weekDays.map((day) => {
                 const dayPlan = plan.days.find(d => d.day === day.value);
                 const dayMacros = dayPlan ? calculateDayMacros(dayPlan) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
                 return (
-                  <th key={day.value} className="p-2 text-left align-bottom border-r last:border-r-0">
+                  <th key={day.value} className="p-2.5 text-left align-bottom border-r border-line last:border-r-0 bg-surface-alt">
                     <button
                       type="button"
                       onClick={() => onDayClick(day.value)}
-                      className="text-left hover:opacity-80 transition-opacity w-full"
+                      className="text-left hover:opacity-80 transition-opacity duration-[120ms] w-full"
                     >
-                      <div className="text-sm font-display font-bold flex items-baseline justify-between gap-1">
-                        <span>{day.short}</span>
-                        <span className="text-xs font-normal text-accent">
-                          {dayMacros.calories.toFixed(0)} kcal
+                      <div className="flex items-baseline justify-between gap-1">
+                        <span className="text-[13px] font-semibold">{day.short}</span>
+                        <span className="num text-[11px] font-semibold" style={{ color: 'var(--m-cal)' }}>
+                          {dayMacros.calories.toFixed(0)}
                         </span>
                       </div>
-                      <div className="flex gap-2 mt-0.5 text-[10px] text-muted-foreground font-normal">
-                        <span>P: {dayMacros.protein.toFixed(0)}g</span>
-                        <span>C: {dayMacros.carbs.toFixed(0)}g</span>
-                        <span>G: {dayMacros.fat.toFixed(0)}g</span>
+                      <div className="mono flex gap-2 mt-0.5 text-[10px] text-muted">
+                        <span>P {dayMacros.protein.toFixed(0)}</span>
+                        <span>C {dayMacros.carbs.toFixed(0)}</span>
+                        <span>G {dayMacros.fat.toFixed(0)}</span>
                       </div>
                     </button>
                   </th>
@@ -49,39 +49,39 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
           </thead>
           <tbody>
             {orderedSlots.map((slot) => (
-              <tr key={slot.id} className="border-b last:border-b-0">
-                <td className="p-2 align-middle text-center border-r bg-muted/30">
-                  <p className="text-xs font-semibold break-words">{slot.name}</p>
+              <tr key={slot.id} className="border-b border-line last:border-b-0">
+                <td className="p-2.5 align-middle text-center border-r border-line bg-surface-alt">
+                  <p className="text-[11.5px] font-semibold break-words">{slot.name}</p>
                   {slot.time && (
-                    <p className="text-[10px] text-muted-foreground">{slot.time}</p>
+                    <p className="mono text-[10px] text-muted mt-0.5">{slot.time}</p>
                   )}
                 </td>
                 {weekDays.map((day) => {
                   const dayPlan = plan.days.find(d => d.day === day.value);
                   const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
-                  if (!meal) return <td key={day.value} className="p-2 align-top border-r last:border-r-0" />;
+                  if (!meal) return <td key={day.value} className="p-2 align-top border-r border-line last:border-r-0" />;
                   const macros = calculateMealMacros(meal);
                   return (
                     <td
                       key={day.value}
-                      className={`p-2 align-top border-r last:border-r-0 ${
+                      className={`p-2 align-top border-r border-line last:border-r-0 ${
                         meal.isCheat ? 'bg-accent/5' : ''
                       }`}
                     >
                       <div className="flex flex-col gap-1 h-full">
-                        <span className="text-[10px] text-accent font-medium">
+                        <span className="num text-[10.5px] font-medium" style={{ color: 'var(--m-cal)' }}>
                           {macros.calories.toFixed(0)} kcal
                         </span>
 
                         {meal.isCheat ? (
                           <>
-                            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full self-start flex items-center gap-1">
-                              <Sparkles className="h-2.5 w-2.5" /> Livre
-                            </span>
+                            <Badge variant="cheat" className="self-start text-[9px] px-1.5 py-0.5">
+                              Livre
+                            </Badge>
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="h-6 text-[10px] justify-start px-1 mt-auto"
+                              size="xs"
+                              className="justify-start px-1 mt-auto text-[10px]"
                               onClick={() => onToggleCheat(meal.id, true)}
                             >
                               Desmarcar
@@ -91,20 +91,20 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
                           <>
                             <div className="space-y-0.5 flex-1">
                               {meal.foods.length === 0 ? (
-                                <p className="text-[10px] text-muted-foreground italic">Vazio</p>
+                                <p className="text-[10.5px] text-muted italic">Vazio</p>
                               ) : (
                                 meal.foods.map(({ food, quantity }, idx) => (
                                   <div key={idx} className="text-[11px] flex items-center justify-between gap-1 group">
                                     <span className="truncate">
                                       {food.name}{' '}
-                                      <span className="text-muted-foreground">{quantity}g</span>
+                                      <span className="mono text-muted">{quantity}g</span>
                                     </span>
                                     <button
                                       type="button"
                                       onClick={() => onRemoveFood(meal.id, food.id)}
-                                      className="opacity-0 group-hover:opacity-100 hover:text-destructive flex-shrink-0"
+                                      className="opacity-0 group-hover:opacity-100 hover:text-danger flex-shrink-0 transition-opacity duration-[120ms]"
                                     >
-                                      <X className="h-3 w-3" />
+                                      <X size={12} />
                                     </button>
                                   </div>
                                 ))
@@ -112,13 +112,13 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
                             </div>
                             <div className="flex gap-1 mt-auto">
                               <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-6 text-xs flex-1 px-1"
+                                variant="sec"
+                                size="xs"
+                                className="flex-1 px-1"
                                 onClick={() => onAddFood(meal.id)}
                                 title="Adicionar alimento"
                               >
-                                <Plus className="h-3 w-3" />
+                                <Plus size={12} />
                               </Button>
                               {meal.foods.length > 0 && (
                                 <CopyMealPopover
@@ -130,12 +130,12 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
                               )}
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs px-1"
+                                size="xs"
+                                className="px-1"
                                 onClick={() => onToggleCheat(meal.id, false)}
                                 title="Marcar como livre"
                               >
-                                <Sparkles className="h-3 w-3" />
+                                <Sparkles size={12} />
                               </Button>
                             </div>
                           </>
@@ -148,7 +148,7 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
             ))}
           </tbody>
         </table>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

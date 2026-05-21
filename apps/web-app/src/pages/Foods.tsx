@@ -4,10 +4,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFoodMutations } from '@/hooks/useFoods';
 import { Food } from '@/types';
@@ -132,165 +133,181 @@ export default function Foods() {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-display">
+          <div className="eyebrow mb-2">Base de dados</div>
+          <h1 className="text-[32px] font-bold tracking-[-0.02em] leading-[1.1]">
             Alimentos
           </h1>
-          <p className="mt-1 text-muted-foreground">
-            Gerencie sua base de alimentos
+          <p className="text-muted mt-2 max-w-[56ch] text-sm">
+            Gerencie sua base de alimentos com valores nutricionais por porção.
           </p>
         </div>
-
-        <Button onClick={handleOpenCreate} className="bg-gradient-primary hover:opacity-90">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Alimento
+        <Button variant="acc" onClick={handleOpenCreate}>
+          <Plus size={16} />
+          Novo alimento
         </Button>
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar alimentos..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" size={16} />
+          <Input
+            placeholder="Buscar alimentos…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {total > 0 && (
+          <span className="mono text-[11.5px] text-muted flex-shrink-0">
+            {total} alimento{total !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
-      {/* Foods Table */}
+      {/* Content */}
       {foods.length === 0 && !isLoading ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Apple className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground font-display">
-              {searchQuery ? 'Nenhum alimento encontrado' : 'Nenhum alimento cadastrado'}
-            </h3>
-            <p className="mt-2 text-center text-muted-foreground">
-              {searchQuery
-                ? 'Tente buscar com outros termos'
-                : 'Adicione alimentos para usar em suas refeições'}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
+            <Apple size={26} strokeWidth={1.6} />
+          </div>
+          <h3 className="text-[19px] font-semibold mb-1.5">
+            {searchQuery ? 'Nenhum alimento encontrado' : 'Nenhum alimento cadastrado'}
+          </h3>
+          <p className="text-muted max-w-[360px] mb-5">
+            {searchQuery
+              ? 'Tente buscar com outros termos'
+              : 'Adicione alimentos para usar em suas refeições'}
+          </p>
+          {!searchQuery && (
+            <Button variant="acc" onClick={handleOpenCreate}>
+              <Plus size={16} />
+              Adicionar primeiro alimento
+            </Button>
+          )}
+        </div>
       ) : (
         <>
           {/* Mobile: cards */}
           <div className="space-y-2 md:hidden">
             {foods.map((food) => (
-              <Card key={food.id} className="p-4">
+              <div key={food.id} className="bg-surface border border-line rounded-lg shadow-1 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{food.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{food.portion}</p>
+                    <p className="font-semibold text-[14.5px] truncate">{food.name}</p>
+                    <p className="mono text-[11px] text-muted mt-0.5">{food.portion}</p>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-0.5 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-11 w-11"
                       onClick={() => handleOpenEdit(food)}
-                      aria-label="Editar"
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit size={14} strokeWidth={1.6} />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-11 w-11 hover:text-destructive"
+                      className="hover:text-danger"
                       onClick={() => handleDelete(food.id)}
-                      aria-label="Excluir"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 size={14} strokeWidth={1.6} />
                     </Button>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
-                  <span className="text-accent font-medium">{food.calories} kcal</span>
-                  <span className="text-muted-foreground">Fibras: {food.fibers}g</span>
-                  <span className="text-protein">P: {food.protein}g</span>
-                  <span className="text-carbs">C: {food.carbs}g</span>
-                  <span className="text-fat">G: {food.fat}g</span>
+                <div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-1.5">
+                  <div>
+                    <div className="eyebrow mb-0.5">Kcal</div>
+                    <div className="num text-[13px] font-semibold" style={{ color: 'var(--m-cal)' }}>{food.calories}</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow mb-0.5">Prot</div>
+                    <div className="num text-[13px] font-semibold" style={{ color: 'var(--m-pro)' }}>{food.protein}g</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow mb-0.5">Carb</div>
+                    <div className="num text-[13px] font-semibold" style={{ color: 'var(--m-carb)' }}>{food.carbs}g</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow mb-0.5">Gord</div>
+                    <div className="num text-[13px] font-semibold" style={{ color: 'var(--m-fat)' }}>{food.fat}g</div>
+                  </div>
+                  <div>
+                    <div className="eyebrow mb-0.5">Fibra</div>
+                    <div className="num text-[13px] font-semibold text-muted">{food.fibers}g</div>
+                  </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
 
-          {/* Desktop: tabela */}
-          <Card className="hidden md:block">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Alimento</TableHead>
-                    <TableHead className="text-right">Calorias</TableHead>
-                    <TableHead className="text-right">Proteína</TableHead>
-                    <TableHead className="text-right">Carbos</TableHead>
-                    <TableHead className="text-right">Gordura</TableHead>
-                    <TableHead className="text-right">Fibras</TableHead>
-                    <TableHead className="text-right">Porção</TableHead>
-                    <TableHead className="w-24"></TableHead>
+          {/* Desktop: table */}
+          <div className="hidden md:block bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-surface-alt hover:bg-surface-alt">
+                  <TableHead>Alimento</TableHead>
+                  <TableHead className="text-right">Calorias</TableHead>
+                  <TableHead className="text-right">Proteína</TableHead>
+                  <TableHead className="text-right">Carbos</TableHead>
+                  <TableHead className="text-right">Gordura</TableHead>
+                  <TableHead className="text-right">Fibras</TableHead>
+                  <TableHead className="text-right">Porção</TableHead>
+                  <TableHead className="w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {foods.map((food) => (
+                  <TableRow key={food.id}>
+                    <TableCell className="font-medium text-[13.5px]">{food.name}</TableCell>
+                    <TableCell className="text-right">
+                      <span className="num text-[13px] font-semibold" style={{ color: 'var(--m-cal)' }}>
+                        {food.calories}
+                      </span>
+                      <span className="mono text-[10.5px] text-muted ml-0.5">kcal</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="num text-[13px]" style={{ color: 'var(--m-pro)' }}>{food.protein}g</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="num text-[13px]" style={{ color: 'var(--m-carb)' }}>{food.carbs}g</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="num text-[13px]" style={{ color: 'var(--m-fat)' }}>{food.fat}g</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="num text-[13px] text-muted">{food.fibers}g</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="mono text-[11px] text-muted">{food.portion}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-0.5">
+                        <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(food)}>
+                          <Edit size={14} strokeWidth={1.6} />
+                        </Button>
+                        <Button variant="ghost" size="icon-xs" className="hover:text-danger" onClick={() => handleDelete(food.id)}>
+                          <Trash2 size={14} strokeWidth={1.6} />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {foods.map((food) => (
-                    <TableRow key={food.id}>
-                      <TableCell className="font-medium">{food.name}</TableCell>
-                      <TableCell className="text-right text-accent font-medium">
-                        {food.calories} kcal
-                      </TableCell>
-                      <TableCell className="text-right text-protein">
-                        {food.protein}g
-                      </TableCell>
-                      <TableCell className="text-right text-carbs">
-                        {food.carbs}g
-                      </TableCell>
-                      <TableCell className="text-right text-fat">
-                        {food.fat}g
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {food.fibers}g
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {food.portion}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEdit(food)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(food.id)}
-                            className="hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Infinite scroll trigger */}
           <div ref={loaderRef} className="flex justify-center py-4">
             {isLoading && (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted" />
             )}
             {!hasMore && foods.length > 0 && (
-              <p className="text-sm text-muted-foreground">
+              <p className="mono text-[11.5px] text-muted">
                 Todos os {total} alimentos carregados
               </p>
             )}
@@ -302,51 +319,59 @@ export default function Foods() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display">
-              {editingFood ? 'Editar Alimento' : 'Novo Alimento'}
+            <DialogTitle>
+              {editingFood ? 'Editar alimento' : 'Novo alimento'}
             </DialogTitle>
+            <DialogDescription>
+              Informe os valores nutricionais por porção.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input placeholder="Ex: Frango Grelhado" {...form.register('name')} />
-              {form.formState.errors.name && (
-                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Calorias (kcal)</Label>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogBody>
+              <div className="grid grid-cols-[1fr_auto] gap-2.5">
+                <div>
+                  <label className="label-mono">Nome</label>
+                  <Input placeholder="Ex: Frango grelhado" {...form.register('name')} />
+                  {form.formState.errors.name && (
+                    <p className="text-xs text-danger mt-1.5">{form.formState.errors.name.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="label-mono">Porção</label>
+                  <Input placeholder="100g" {...form.register('portion')} className="w-24" />
+                </div>
+              </div>
+              <div>
+                <label className="label-mono">Calorias (kcal)</label>
                 <Input type="number" inputMode="decimal" placeholder="0" {...form.register('calories')} />
+                {form.formState.errors.calories && (
+                  <p className="text-xs text-danger mt-1.5">{form.formState.errors.calories.message}</p>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Porção</Label>
-                <Input placeholder="100g" {...form.register('portion')} />
+              <div className="grid grid-cols-4 gap-2.5">
+                <div>
+                  <label className="label-mono">Proteína (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('protein')} />
+                </div>
+                <div>
+                  <label className="label-mono">Carbo. (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('carbs')} />
+                </div>
+                <div>
+                  <label className="label-mono">Gordura (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fat')} />
+                </div>
+                <div>
+                  <label className="label-mono">Fibras (g)</label>
+                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fibers')} />
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Proteína (g)</Label>
-                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('protein')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Carboidratos (g)</Label>
-                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('carbs')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Gordura (g)</Label>
-                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fat')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Fibras (g)</Label>
-                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fibers')} />
-              </div>
-            </div>
+            </DialogBody>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
+                <Button type="button" variant="ghost">Cancelar</Button>
               </DialogClose>
-              <Button type="submit" className="bg-gradient-primary hover:opacity-90">
+              <Button type="submit" variant="acc">
                 {editingFood ? 'Salvar' : 'Adicionar'}
               </Button>
             </DialogFooter>

@@ -1,5 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 
 interface DeletePresetDialogProps {
   open: boolean;
@@ -12,16 +15,16 @@ export function DeletePresetDialog({ open, onOpenChange, onConfirm }: DeletePres
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display">Excluir refeição pronta</DialogTitle>
+          <DialogTitle>Excluir refeição pronta</DialogTitle>
+          <DialogDescription>
+            Esta ação não pode ser desfeita.
+          </DialogDescription>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          Tem certeza que deseja excluir esta refeição pronta? Esta ação não pode ser desfeita.
-        </p>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
+            <Button variant="ghost">Cancelar</Button>
           </DialogClose>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button variant="danger" onClick={onConfirm}>
             Excluir
           </Button>
         </DialogFooter>

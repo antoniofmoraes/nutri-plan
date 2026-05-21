@@ -1,101 +1,80 @@
-import { cn } from '@/lib/utils';
-
 interface MacroRingProps {
-  protein: number;
-  carbs: number;
-  fat: number;
+  totals: { cal: number; p: number; c: number; f: number };
+  target: { cal: number; p: number; c: number; f: number };
   size?: number;
-  strokeWidth?: number;
-  className?: string;
 }
 
-export function MacroRing({
-  protein,
-  carbs,
-  fat,
-  size = 120,
-  strokeWidth = 12,
-  className,
-}: MacroRingProps) {
-  const total = protein + carbs + fat;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
+export function MacroRing({ totals, target, size = 220 }: MacroRingProps) {
+  const tw = 18;
+  const r = (size - 28) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circ = 2 * Math.PI * r;
 
-  const proteinPct = total > 0 ? protein / total : 0;
-  const carbsPct = total > 0 ? carbs / total : 0;
-  const fatPct = total > 0 ? fat / total : 0;
+  const kcalP = totals.p * 4;
+  const kcalC = totals.c * 4;
+  const kcalF = totals.f * 9;
+  const totalKcal = Math.max(1, kcalP + kcalC + kcalF);
 
-  const proteinOffset = 0;
-  const carbsOffset = proteinPct * circumference;
-  const fatOffset = (proteinPct + carbsPct) * circumference;
+  const segs = [
+    { key: "p", color: "var(--m-pro)", share: kcalP / totalKcal, value: totals.p, label: "Proteína", target: target.p },
+    { key: "c", color: "var(--m-carb)", share: kcalC / totalKcal, value: totals.c, label: "Carbo.", target: target.c },
+    { key: "f", color: "var(--m-fat)", share: kcalF / totalKcal, value: totals.f, label: "Gordura", target: target.f },
+  ];
+
+  let offset = 0;
 
   return (
-    <div className={cn('relative', className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        {/* Background circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="hsl(var(--muted))"
-          strokeWidth={strokeWidth}
-        />
-        
-        {/* Fat segment */}
-        {fat > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="hsl(var(--fat))"
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${fatPct * circumference} ${circumference}`}
-            strokeDashoffset={-fatOffset}
-            strokeLinecap="round"
-            className="transition-all duration-500"
-          />
-        )}
-        
-        {/* Carbs segment */}
-        {carbs > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="hsl(var(--carbs))"
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${carbsPct * circumference} ${circumference}`}
-            strokeDashoffset={-carbsOffset}
-            strokeLinecap="round"
-            className="transition-all duration-500"
-          />
-        )}
-        
-        {/* Protein segment */}
-        {protein > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="hsl(var(--protein))"
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${proteinPct * circumference} ${circumference}`}
-            strokeDashoffset={-proteinOffset}
-            strokeLinecap="round"
-            className="transition-all duration-500"
-          />
-        )}
-      </svg>
-      
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold font-display text-foreground">
-          {total.toFixed(0)}g
-        </span>
-        <span className="text-xs text-muted-foreground">total</span>
+    <div className="flex flex-col items-center gap-[18px]">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--surface-alt)" strokeWidth={tw} />
+          {segs.map((s) => {
+            const len = s.share * circ;
+            const dash = `${len} ${circ - len}`;
+            const off = -offset;
+            offset += len;
+            return (
+              <circle
+                key={s.key}
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={tw}
+                strokeDasharray={dash}
+                strokeDashoffset={off}
+                strokeLinecap="butt"
+                className="transition-all duration-[350ms]"
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 grid place-items-center text-center">
+          <div>
+            <div className="eyebrow mb-1">Calorias</div>
+            <div className="num text-[30px] font-semibold tracking-[-0.02em] leading-none">
+              {Math.round(totals.cal).toLocaleString("pt-BR")}
+            </div>
+            <div className="mono text-[11px] text-muted mt-1">
+              de {target.cal.toLocaleString("pt-BR")} kcal
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="w-full flex flex-col gap-2">
+        {segs.map((s) => {
+          const pct = Math.round(s.share * 100);
+          return (
+            <div key={s.key} className="flex items-center gap-2.5 text-[13px]">
+              <span className="w-2 h-2 rounded-[2px] flex-shrink-0" style={{ background: s.color }} />
+              <span className="flex-1 text-ink-2">{s.label}</span>
+              <span className="num text-muted">{Math.round(s.value)}g</span>
+              <span className="num text-muted w-9 text-right">{pct}%</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

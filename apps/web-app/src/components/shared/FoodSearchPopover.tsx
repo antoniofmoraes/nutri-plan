@@ -31,29 +31,29 @@ export function FoodSearchPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full justify-start text-left font-normal">
+        <Button variant="sec" className="w-full justify-start text-left font-normal">
           {selectedFood ? (
-            <span className="truncate">{selectedFood.name}</span>
+            <span className="truncate text-[13.5px]">{selectedFood.name}</span>
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-muted text-[13.5px]">{placeholder}</span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <div className="p-2 border-b">
+        <div className="p-2 border-b border-line">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
             <Input
-              placeholder="Buscar alimento..."
+              placeholder="Buscar alimento…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8"
+              className="pl-8 h-8 text-[12.5px]"
             />
           </div>
         </div>
         <div className="max-h-64 overflow-y-auto">
           {filteredFoods.length === 0 ? (
-            <p className="p-3 text-sm text-center text-muted-foreground">
+            <p className="p-3 text-[12.5px] text-center text-muted">
               Nenhum alimento encontrado
             </p>
           ) : (
@@ -62,12 +62,12 @@ export function FoodSearchPopover({
                 key={food.id}
                 type="button"
                 onClick={() => onSelect(food.id)}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary ${
-                  selectedFoodId === food.id ? 'bg-secondary' : ''
+                className={`w-full text-left px-3 py-2 text-[12.5px] hover:bg-surface-alt border-b border-line last:border-b-0 transition-[background] duration-[120ms] ${
+                  selectedFoodId === food.id ? 'bg-surface-alt' : ''
                 }`}
               >
                 <div className="font-medium truncate">{food.name}</div>
-                <div className="text-xs text-muted-foreground">{food.calories} kcal/100g</div>
+                <div className="mono text-[10.5px] text-muted mt-0.5">{food.calories} kcal/100g</div>
               </button>
             ))
           )}

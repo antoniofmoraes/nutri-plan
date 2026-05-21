@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Plus, BookCopy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { usePresetMeals } from '@/hooks/usePresetMeals';
 import { useAllFoods } from '@/hooks/useFoods';
 import { useMealPlans } from '@/hooks/useMealPlans';
@@ -75,34 +74,43 @@ export default function PresetMeals() {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-display">Refeições Prontas</h1>
-          <p className="mt-1 text-muted-foreground">Monte refeições reutilizáveis para aplicar nos seus planos</p>
+          <div className="eyebrow mb-2">Templates</div>
+          <h1 className="text-[32px] font-bold tracking-[-0.02em] leading-[1.1]">
+            Refeições prontas
+          </h1>
+          <p className="text-muted mt-2 max-w-[56ch] text-sm">
+            Monte refeições reutilizáveis para aplicar nos seus planos.
+          </p>
         </div>
-        <Button onClick={handleOpenCreate} className="bg-gradient-primary hover:opacity-90">
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Refeição Pronta
+        <Button variant="acc" onClick={handleOpenCreate}>
+          <Plus size={16} />
+          Nova refeição pronta
         </Button>
       </div>
 
+      {/* Content */}
       {presetMeals.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <BookCopy className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground font-display">
-              Nenhuma refeição pronta
-            </h3>
-            <p className="mt-2 text-center text-muted-foreground">
-              Crie refeições prontas para reutilizar nos seus planos alimentares
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
+            <BookCopy size={26} strokeWidth={1.6} />
+          </div>
+          <h3 className="text-[19px] font-semibold mb-1.5">
+            Nenhuma refeição pronta
+          </h3>
+          <p className="text-muted max-w-[360px] mb-5">
+            Crie refeições prontas para reutilizar nos seus planos alimentares.
+          </p>
+          <Button variant="acc" onClick={handleOpenCreate}>
+            <Plus size={16} />
+            Criar primeira refeição
+          </Button>
+        </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-3">
           {presetMeals.map((preset) => (
             <PresetCard
               key={preset.id}

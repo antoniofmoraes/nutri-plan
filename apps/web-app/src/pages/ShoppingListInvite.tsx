@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { shoppingListService } from '@/services/shoppingListService';
 
@@ -27,29 +26,27 @@ export default function ShoppingListInvite() {
 
   return (
     <div className="flex items-center justify-center py-20">
-      <Card className="max-w-md w-full">
-        <CardContent className="py-10 text-center space-y-4">
-          {status === 'loading' && (
-            <>
-              <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
-              <p className="text-muted-foreground">Aceitando convite...</p>
-            </>
-          )}
-          {status === 'success' && (
-            <>
-              <p className="text-lg font-semibold font-display">Convite aceito!</p>
-              <p className="text-muted-foreground text-sm">Redirecionando para a lista...</p>
-            </>
-          )}
-          {status === 'error' && (
-            <>
-              <p className="text-lg font-semibold font-display text-destructive">Não foi possível aceitar</p>
-              <p className="text-muted-foreground text-sm">{error}</p>
-              <Button onClick={() => navigate('/listas-compras')}>Ir para minhas listas</Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center max-w-md w-full space-y-4">
+        {status === 'loading' && (
+          <>
+            <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            <p className="text-muted text-[13.5px]">Aceitando convite...</p>
+          </>
+        )}
+        {status === 'success' && (
+          <>
+            <p className="text-[19px] font-semibold">Convite aceito!</p>
+            <p className="text-muted text-[13.5px]">Redirecionando para a lista...</p>
+          </>
+        )}
+        {status === 'error' && (
+          <>
+            <p className="text-[19px] font-semibold text-danger">Não foi possível aceitar</p>
+            <p className="text-muted text-[13.5px]">{error}</p>
+            <Button variant="acc" onClick={() => navigate('/listas-compras')}>Ir para minhas listas</Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

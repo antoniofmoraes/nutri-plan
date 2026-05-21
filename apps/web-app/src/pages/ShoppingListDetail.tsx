@@ -1,12 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart, Users, Link2, Copy, Check, LogOut, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ShoppingCart, Users, Link2, Copy, Check, LogOut, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useMealPlans } from '@/hooks/useMealPlans';
-import { ShoppingList, WeekDay } from '@/types';
+import { ShoppingList } from '@/types';
 import { weekDays } from '@/lib/constants';
 import { shoppingListService } from '@/services/shoppingListService';
 import { toast } from 'sonner';
@@ -124,154 +126,164 @@ export default function ShoppingListDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (isLoading) return <p className="text-center py-12 text-muted-foreground">Carregando...</p>;
+  if (isLoading) return <p className="text-center py-12 text-muted text-[13px]">Carregando...</p>;
   if (!list) return null;
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/listas-compras')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold font-display">{list.name}</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <Link
+            to="/listas-compras"
+            className="eyebrow inline-flex items-center gap-1 mb-2 hover:text-ink transition-colors"
+          >
+            ← LISTAS
+          </Link>
+          <h1 className="text-[32px] font-bold tracking-[-0.02em] leading-[1.1]">
+            {list.name}
+          </h1>
+          <p className="mono text-[11.5px] text-muted mt-2">
             {list.isOwner ? 'Você é dono' : `Convidado por ${list.ownerName}`}
           </p>
         </div>
-        {!list.isOwner && (
-          <Button variant="outline" onClick={handleLeave}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
+        <div className="flex items-center gap-2.5">
+          {!list.isOwner && (
+            <Button variant="sec" onClick={handleLeave}>
+              <LogOut size={14} />
+              Sair
+            </Button>
+          )}
+          {list.isOwner && (
+            <Button variant="sec" onClick={list.inviteToken ? () => setInviteOpen(true) : handleGenerateInvite}>
+              <Link2 size={14} />
+              {list.inviteToken ? 'Ver convite' : 'Convidar'}
+            </Button>
+          )}
+          <Button variant="acc" onClick={() => setSelectionOpen(true)}>
+            <ShoppingCart size={14} />
+            Selecionar refeições ({list.selectedMealIds.length})
           </Button>
-        )}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button className="w-full sm:w-auto" onClick={() => setSelectionOpen(true)}>
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Selecionar Refeições ({list.selectedMealIds.length})
-        </Button>
-        {list.isOwner && (
-          <Button variant="outline" onClick={list.inviteToken ? () => setInviteOpen(true) : handleGenerateInvite}>
-            <Link2 className="mr-2 h-4 w-4" />
-            {list.inviteToken ? 'Ver Convite' : 'Convidar'}
-          </Button>
-        )}
-      </div>
-
-      {/* Members */}
-      {(list.members.length > 0 || list.isOwner) && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-display flex items-center gap-2">
-              <Users className="h-4 w-4" /> Pessoas ({list.members.length + 1})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <div>
-                <span className="font-medium">{list.ownerName}</span>
-                <span className="ml-2 text-xs text-muted-foreground">Dono</span>
-              </div>
-            </div>
-            {list.members.map((m) => (
-              <div key={m.userId} className="flex items-center justify-between text-sm">
-                <div>
-                  <span className="font-medium">{m.name}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{m.email}</span>
-                </div>
-                {list.isOwner && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 hover:text-destructive"
-                    onClick={() => handleRemoveMember(m.userId)}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Items */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="font-display">Lista de Compras</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-5">
+        {/* Items */}
+        <div className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+          <div className="px-4 py-3 border-b border-line">
+            <span className="font-semibold text-[14.5px]">Lista de compras</span>
+          </div>
           {list.items.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6">
-              Selecione refeições para gerar a lista
-            </p>
+            <div className="p-8 text-center text-muted text-[13px]">
+              Selecione refeições para gerar a lista.
+            </div>
           ) : (
-            <div className="divide-y">
+            <div>
               {list.items.map((item) => (
-                <div key={item.foodId} className="flex justify-between py-2.5">
-                  <span className="font-medium">{item.foodName}</span>
-                  <span className="text-muted-foreground tabular-nums">
+                <div key={item.foodId} className="flex justify-between px-4 py-2.5 border-b border-line last:border-b-0">
+                  <span className="font-medium text-[13.5px]">{item.foodName}</span>
+                  <span className="num text-[13px] text-muted">
                     {item.quantity.toFixed(0)}{item.unit}
                   </span>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Members */}
+        {(list.members.length > 0 || list.isOwner) && (
+          <div className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden h-fit">
+            <div className="px-4 py-3 border-b border-line flex items-center gap-2">
+              <Users size={14} className="text-muted" />
+              <span className="font-semibold text-[14.5px]">Pessoas ({list.members.length + 1})</span>
+            </div>
+            <div>
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-line">
+                <div className="flex items-center gap-2">
+                  <div className="w-[28px] h-[28px] rounded-md bg-ink text-bg grid place-items-center font-mono text-[11px] font-medium">
+                    {list.ownerName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <span className="font-medium text-[13px]">{list.ownerName}</span>
+                    <span className="mono text-[10px] text-muted ml-1.5">Dono</span>
+                  </div>
+                </div>
+              </div>
+              {list.members.map((m) => (
+                <div key={m.userId} className="flex items-center justify-between px-4 py-2.5 border-b border-line last:border-b-0 group">
+                  <div className="flex items-center gap-2">
+                    <div className="w-[28px] h-[28px] rounded-md bg-surface-alt text-ink grid place-items-center font-mono text-[11px] font-medium">
+                      {m.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="font-medium text-[13px]">{m.name}</span>
+                      <span className="mono text-[10px] text-muted ml-1.5">{m.email}</span>
+                    </div>
+                  </div>
+                  {list.isOwner && (
+                    <button
+                      className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-[120ms]"
+                      onClick={() => handleRemoveMember(m.userId)}
+                    >
+                      <X size={13} strokeWidth={1.6} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Meal Selection Dialog */}
       <Dialog open={selectionOpen} onOpenChange={setSelectionOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent lg>
           <DialogHeader>
-            <DialogTitle className="font-display">Selecionar Refeições</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Marque as refeições que devem entrar na lista de compras
-            </p>
+            <DialogTitle>Selecionar refeições</DialogTitle>
+            <DialogDescription>
+              Marque as refeições que devem entrar na lista de compras.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-4">
+          <DialogBody>
             {mealPlans.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6">
-                Você não tem planos alimentares cadastrados
+              <p className="text-center text-muted py-6 text-[13px]">
+                Você não tem planos alimentares cadastrados.
               </p>
             ) : (
               mealPlans.map((plan) => {
                 const isExpanded = expandedPlans.has(plan.id);
                 const planMealCount = plan.days.reduce((sum, d) => sum + d.meals.filter(m => selectedMealIds.has(m.id)).length, 0);
                 return (
-                  <div key={plan.id} className="border rounded-lg">
+                  <div key={plan.id} className="border border-line rounded-[var(--r-md)] overflow-hidden">
                     <button
                       type="button"
                       onClick={() => togglePlan(plan.id)}
-                      className="w-full flex items-center justify-between p-3 hover:bg-secondary/50"
+                      className="w-full flex items-center justify-between p-3 hover:bg-surface-alt transition-[background] duration-[120ms]"
                     >
                       <div className="flex items-center gap-2">
-                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        <span className="font-medium">{plan.name}</span>
+                        {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                        <span className="font-medium text-[13.5px]">{plan.name}</span>
                         {planMealCount > 0 && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          <span className="mono text-[10px] bg-accent-soft text-accent px-2 py-0.5 rounded-full font-medium">
                             {planMealCount}
                           </span>
                         )}
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className="border-t p-3 space-y-3">
+                      <div className="border-t border-line p-3 space-y-3">
                         {weekDays.map((day) => {
                           const dayPlan = plan.days.find(d => d.day === day.value);
                           if (!dayPlan || dayPlan.meals.length === 0) return null;
                           return (
                             <div key={day.value}>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                                {day.label}
-                              </p>
-                              <div className="space-y-1.5 pl-2">
+                              <p className="eyebrow mb-1.5">{day.label}</p>
+                              <div className="space-y-0.5 pl-2">
                                 {dayPlan.meals.map((meal) => (
                                   <label
                                     key={meal.id}
-                                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-secondary/50 rounded px-2 py-2 min-h-[44px]"
+                                    className="flex items-center gap-2 text-[12.5px] cursor-pointer hover:bg-surface-alt rounded-[var(--r-sm)] px-2 py-2 min-h-[40px] transition-[background] duration-[120ms]"
                                   >
                                     <Checkbox
                                       checked={selectedMealIds.has(meal.id)}
@@ -279,7 +291,7 @@ export default function ShoppingListDetail() {
                                     />
                                     <span>{meal.name}</span>
                                     {meal.foods.length > 0 && (
-                                      <span className="text-xs text-muted-foreground ml-auto">
+                                      <span className="mono text-[10px] text-muted ml-auto">
                                         {meal.foods.length} {meal.foods.length === 1 ? 'item' : 'itens'}
                                       </span>
                                     )}
@@ -295,13 +307,13 @@ export default function ShoppingListDetail() {
                 );
               })
             )}
-          </div>
+          </DialogBody>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
+              <Button variant="ghost">Cancelar</Button>
             </DialogClose>
-            <Button onClick={handleSaveSelection} className="bg-gradient-primary">
-              Salvar Seleção
+            <Button variant="acc" onClick={handleSaveSelection}>
+              Salvar seleção
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -311,29 +323,29 @@ export default function ShoppingListDetail() {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display">Convite</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
+            <DialogTitle>Convite</DialogTitle>
+            <DialogDescription>
               Compartilhe esse link. O convite expira em{' '}
               {list.inviteExpiresAt && new Date(list.inviteExpiresAt).toLocaleDateString('pt-BR')}.
-            </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
             <div className="flex gap-2">
               <input
                 type="text"
                 readOnly
                 value={inviteUrl}
-                className="flex-1 px-3 py-2 text-sm bg-secondary rounded border"
+                className="flex-1 px-3 py-2 text-[13px] mono bg-surface-alt rounded-[var(--r-md)] border border-line"
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
-              <Button onClick={copyInvite} variant="outline" size="icon">
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <Button variant="sec" size="icon" onClick={copyInvite}>
+                {copied ? <Check size={16} /> : <Copy size={16} />}
               </Button>
             </div>
-            <Button variant="destructive" className="w-full" onClick={handleRevokeInvite}>
-              Revogar Convite
+            <Button variant="danger" className="w-full" onClick={handleRevokeInvite}>
+              Revogar convite
             </Button>
-          </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

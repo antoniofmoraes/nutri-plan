@@ -17,7 +17,7 @@ public class User
     public required string Email { get; set; }
 
     [Column("password")]
-    public required string Password { get; set; }
+    public string? Password { get; set; }
 
     [Column("googleId")]
     public string? GoogleId { get; set; }

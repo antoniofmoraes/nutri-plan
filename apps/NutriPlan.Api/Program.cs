@@ -145,6 +145,9 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// HTTP client for external APIs (Google userinfo etc.)
+builder.Services.AddHttpClient();
+
 // Services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
@@ -199,6 +202,14 @@ auth.MapPost("/register", async (RegisterRequest request, AuthService svc) =>
 
 auth.MapPost("/login", async (LoginRequest request, AuthService svc) =>
     Results.Json(ApiResponses.Ok(await svc.LoginAsync(request))))
+    .RequireRateLimiting("auth");
+
+auth.MapPost("/google", async (GoogleAuthRequest request, AuthService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GoogleAuthAsync(request.AccessToken))))
+    .RequireRateLimiting("auth");
+
+auth.MapPost("/google/link", async (GoogleLinkRequest request, AuthService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GoogleLinkAsync(request.AccessToken, request.Password))))
     .RequireRateLimiting("auth");
 
 auth.MapGet("/me", async (HttpContext ctx, AuthService svc) =>

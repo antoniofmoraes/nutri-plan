@@ -1,22 +1,26 @@
 import { useMemo, useState } from 'react';
-import { Flame, Beef, Wheat, Droplets, Plus } from 'lucide-react';
+import { Plus, CalendarRange } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMealPlans } from '@/hooks/useMealPlans';
 import { calculateDayMacros, calculateMealMacros } from '@/lib/macros';
-import { MacroCard } from '@/components/dashboard/MacroCard';
-import { MealCard } from '@/components/dashboard/MealCard';
+import { DashboardMealCard, MacroCards } from '@/components/dashboard/MealCard';
 import { MacroRing } from '@/components/ui/macro-ring';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WeekDay } from '@/types';
 import { weekDays } from '@/lib/constants';
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 function getTodayWeekDay(): WeekDay {
   const dayIndex = new Date().getDay();
   const map: WeekDay[] = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
   return map[dayIndex];
+}
+
+function getTodayIndex(): number {
+  const today = getTodayWeekDay();
+  return weekDays.findIndex(d => d.value === today);
 }
 
 export default function Dashboard() {
@@ -28,30 +32,52 @@ export default function Dashboard() {
 
   const selectedPlan = mealPlans.find(p => p.id === selectedPlanId);
   const dayPlan = selectedPlan?.days.find(d => d.day === selectedDay);
+  const todayIdx = getTodayIndex();
 
   const dayMacros = useMemo(() => {
     if (!dayPlan) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     return calculateDayMacros(dayPlan, selectedPlan);
   }, [dayPlan, selectedPlan]);
 
-  const todayLabel = weekDays.find(d => d.value === selectedDay)?.label || '';
+  const totals = { cal: dayMacros.calories, p: dayMacros.protein, c: dayMacros.carbs, f: dayMacros.fat };
+  const target = {
+    cal: selectedPlan?.dailyCalories || 2000,
+    p: selectedPlan?.dailyProtein || 150,
+    c: selectedPlan?.dailyCarbs || 250,
+    f: selectedPlan?.dailyFat || 70,
+  };
+
+  const selectedDayLabel = weekDays.find(d => d.value === selectedDay)?.label || '';
+  const selectedDayShort = weekDays.find(d => d.value === selectedDay)?.short || '';
+
+  const foodCount = dayPlan?.meals.filter(m => !m.isCheat).reduce((a, m) => a + m.foods.length, 0) ?? 0;
+
+  if (mealPlans.length === 0) {
+    return (
+      <div className="space-y-7">
+        <EmptyState />
+      </div>
+    );
+  }
 
   return (
-    <div className="animate-fade-in space-y-8">
+    <div className="space-y-7">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-display">
-            Olá, {user?.name?.split(' ')[0] || 'Usuário'}! 👋
+          <div className="eyebrow mb-2">
+            {weekDays[todayIdx]?.short} · {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+          </div>
+          <h1 className="text-[32px] font-bold tracking-[-0.02em] leading-[1.1]">
+            Olá, {user?.name?.split(' ')[0] || 'Usuário'}.
+            <span className="block text-muted font-medium text-[18px] mt-1.5 tracking-normal">
+              Aqui está sua semana.
+            </span>
           </h1>
-          <p className="mt-1 text-muted-foreground">
-            {todayLabel} • Acompanhe seu plano alimentar
-          </p>
         </div>
-        
         {mealPlans.length > 0 && (
           <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-            <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectTrigger className="w-[200px] bg-surface border-line rounded-[var(--r-md)] h-10 text-[13.5px] font-medium">
               <SelectValue placeholder="Selecione um plano" />
             </SelectTrigger>
             <SelectContent>
@@ -65,143 +91,132 @@ export default function Dashboard() {
         )}
       </div>
 
-      {mealPlans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl bg-card p-12 shadow-medium">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <Plus className="h-8 w-8 text-primary" />
+      {/* Day tabs */}
+      <DayTabs value={selectedDay} onChange={setSelectedDay} />
+
+      {/* Macros section */}
+      <div className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+        <div className="flex items-center justify-between px-[22px] py-4 border-b border-line gap-2.5 flex-wrap">
+          <div>
+            <div className="eyebrow mb-1">Macros · {selectedDayShort}</div>
+            <div className="font-semibold text-[15px]">
+              Meta diária{' '}
+              <span className="mono text-muted text-xs font-medium">
+                · {target.cal.toLocaleString("pt-BR")} kcal
+              </span>
+            </div>
           </div>
-          <h2 className="mt-4 text-xl font-semibold text-foreground font-display">
-            Nenhum plano alimentar
-          </h2>
-          <p className="mt-2 text-center text-muted-foreground">
-            Crie seu primeiro plano alimentar para começar a acompanhar sua dieta.
-          </p>
-          <Button asChild className="mt-6 bg-gradient-primary hover:opacity-90 transition-opacity">
-            <Link to="/planos">
-              <Plus className="mr-2 h-4 w-4" />
-              Criar Plano
-            </Link>
-          </Button>
         </div>
-      ) : (
-        <>
-          {/* Macro Cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MacroCard
-              label="Calorias"
-              value={dayMacros.calories}
-              unit="kcal"
-              color="calories"
-              icon={<Flame className="h-6 w-6 text-accent" />}
-            />
-            <MacroCard
-              label="Proteína"
-              value={dayMacros.protein}
-              unit="g"
-              color="protein"
-              icon={<Beef className="h-6 w-6 text-protein" />}
-            />
-            <MacroCard
-              label="Carboidratos"
-              value={dayMacros.carbs}
-              unit="g"
-              color="carbs"
-              icon={<Wheat className="h-6 w-6 text-carbs" />}
-            />
-            <MacroCard
-              label="Gorduras"
-              value={dayMacros.fat}
-              unit="g"
-              color="fat"
-              icon={<Droplets className="h-6 w-6 text-fat" />}
-            />
+        <div className="p-[22px]">
+          <div className="grid grid-cols-1 min-[780px]:grid-cols-2 gap-8 items-center">
+            <div className="flex justify-center">
+              <MacroRing totals={totals} target={target} size={240} />
+            </div>
+            <MacroCards totals={totals} target={target} />
           </div>
+        </div>
+      </div>
 
-          {/* Day Tabs */}
-          <Tabs value={selectedDay} onValueChange={(v) => setSelectedDay(v as WeekDay)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 bg-muted p-1 h-auto">
-              {weekDays.map(day => (
-                <TabsTrigger
-                  key={day.value}
-                  value={day.value}
-                  className="text-xs sm:text-sm min-h-[44px] px-1 sm:px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  <span className="hidden sm:inline">{day.short}</span>
-                  <span className="sm:hidden">{day.short.slice(0, 1)}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+      {/* Meals section */}
+      <div>
+        <div className="flex items-center justify-between mb-3.5 gap-3 flex-wrap">
+          <div>
+            <h2 className="text-[22px] font-semibold tracking-[-0.01em]">
+              Refeições de {selectedDayShort?.toLowerCase()}
+            </h2>
+            <p className="text-muted text-[13px] mt-1">
+              {dayPlan?.meals.length || 0} refeições · {foodCount} alimentos
+            </p>
+          </div>
+          {selectedPlan && (
+            <Button variant="sec" size="sm" asChild>
+              <Link to={`/planos/${selectedPlan.id}`}>
+                Editar
+              </Link>
+            </Button>
+          )}
+        </div>
 
-            {weekDays.map(day => (
-              <TabsContent key={day.value} value={day.value} className="mt-6">
-                <div className="grid gap-6 lg:grid-cols-3">
-                  {/* Meals List */}
-                  <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-foreground font-display">
-                        Refeições de {day.label}
-                      </h3>
-                    </div>
-                    
-                    {dayPlan?.meals.length === 0 ? (
-                      <div className="rounded-xl border-2 border-dashed border-muted p-8 text-center">
-                        <p className="text-muted-foreground">
-                          Nenhuma refeição cadastrada para este dia.
-                        </p>
-                        <Button asChild variant="outline" className="mt-4">
-                          <Link to="/planos">Gerenciar Plano</Link>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {dayPlan?.meals.map(meal => (
-                          <MealCard
-                            key={meal.id}
-                            meal={meal}
-                            macros={calculateMealMacros(meal, selectedPlan)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Macro Ring Summary */}
-                  <div className="rounded-2xl bg-card p-6 shadow-medium">
-                    <h3 className="text-lg font-semibold text-foreground font-display mb-4">
-                      Distribuição de Macros
-                    </h3>
-                    <div className="flex flex-col items-center">
-                      <MacroRing
-                        protein={dayMacros.protein}
-                        carbs={dayMacros.carbs}
-                        fat={dayMacros.fat}
-                        size={140}
-                      />
-                      <div className="mt-6 grid w-full grid-cols-3 gap-2 text-center">
-                        <div>
-                          <div className="mx-auto mb-1 h-3 w-3 rounded-full bg-protein" />
-                          <p className="text-xs text-muted-foreground">Proteína</p>
-                          <p className="font-semibold text-foreground">{dayMacros.protein.toFixed(0)}g</p>
-                        </div>
-                        <div>
-                          <div className="mx-auto mb-1 h-3 w-3 rounded-full bg-carbs" />
-                          <p className="text-xs text-muted-foreground">Carbos</p>
-                          <p className="font-semibold text-foreground">{dayMacros.carbs.toFixed(0)}g</p>
-                        </div>
-                        <div>
-                          <div className="mx-auto mb-1 h-3 w-3 rounded-full bg-fat" />
-                          <p className="text-xs text-muted-foreground">Gordura</p>
-                          <p className="font-semibold text-foreground">{dayMacros.fat.toFixed(0)}g</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
+        {!dayPlan || dayPlan.meals.length === 0 ? (
+          <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
+              <CalendarRange size={26} strokeWidth={1.6} />
+            </div>
+            <h3 className="text-[19px] font-semibold mb-1.5">Nenhuma refeição</h3>
+            <p className="text-muted max-w-[360px] mb-5">
+              Adicione refeições a este dia no seu plano alimentar.
+            </p>
+            {selectedPlan && (
+              <Button variant="acc" asChild>
+                <Link to={`/planos/${selectedPlan.id}`}>Editar plano</Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {dayPlan.meals.map(meal => (
+              <DashboardMealCard
+                key={meal.id}
+                meal={meal}
+                macros={calculateMealMacros(meal, selectedPlan)}
+              />
             ))}
-          </Tabs>
-        </>
-      )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
+      <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
+        <CalendarRange size={26} strokeWidth={1.6} />
+      </div>
+      <h3 className="text-[19px] font-semibold mb-1.5">Nenhum plano alimentar</h3>
+      <p className="text-muted max-w-[360px] mb-5">
+        Crie seu primeiro plano para começar a planejar suas refeições da semana.
+      </p>
+      <Button variant="acc" asChild>
+        <Link to="/planos">
+          <Plus size={16} />
+          Criar primeiro plano
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function DayTabs({ value, onChange }: { value: WeekDay; onChange: (v: WeekDay) => void }) {
+  return (
+    <div className="grid grid-cols-7 gap-1.5">
+      {weekDays.map((day, i) => {
+        const isActive = value === day.value;
+        return (
+          <button
+            key={day.value}
+            onClick={() => onChange(day.value)}
+            className={cn(
+              'border rounded-[var(--r-md)] py-2.5 px-2 text-center transition-[background,border-color,color] duration-[120ms] cursor-pointer',
+              isActive
+                ? 'bg-ink text-bg border-ink'
+                : 'bg-surface border-line hover:bg-surface-alt'
+            )}
+          >
+            <span className="text-[13px] font-medium hidden min-[640px]:block">{day.short}</span>
+            <span className="text-[13px] font-medium min-[640px]:hidden">{day.letter}</span>
+            <span
+              className={cn(
+                'block font-mono text-[11px] mt-0.5 hidden min-[640px]:block',
+                isActive ? 'opacity-70' : 'text-muted'
+              )}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Plus, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import type { MealSlot } from '@/types';
 
 interface SlotsManagerDialogProps {
@@ -35,17 +37,17 @@ export function SlotsManagerDialog({ open, onOpenChange, slots, onAdd, onUpdate,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display">Editar Refeições</DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Refeições aparecem em todos os dias da semana
-          </p>
+          <DialogTitle>Editar refeições</DialogTitle>
+          <DialogDescription>
+            Refeições aparecem em todos os dias da semana.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-            <Label className="text-xs">Nova refeição</Label>
+        <DialogBody>
+          <div className="rounded-[var(--r-md)] border border-line bg-surface-alt/50 p-3 space-y-2">
+            <label className="label-mono">Nova refeição</label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 placeholder="Nome (ex: Café da manhã)"
@@ -63,19 +65,19 @@ export function SlotsManagerDialog({ open, onOpenChange, slots, onAdd, onUpdate,
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
                 />
                 <Button
+                  variant="acc"
+                  size="icon"
                   onClick={handleAdd}
                   disabled={!newName.trim() || adding}
-                  className="bg-gradient-primary h-11 w-11 sm:h-10 sm:w-10 p-0 flex-shrink-0"
-                  aria-label="Adicionar"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus size={16} />
                 </Button>
               </div>
             </div>
           </div>
 
           {slots.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-6">
+            <p className="text-center text-[13px] text-muted py-6">
               Nenhuma refeição ainda. Adicione acima.
             </p>
           ) : (
@@ -93,11 +95,11 @@ export function SlotsManagerDialog({ open, onOpenChange, slots, onAdd, onUpdate,
               ))}
             </div>
           )}
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Fechar</Button>
+            <Button variant="ghost">Fechar</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -133,53 +135,44 @@ function SlotEditRow({ slot, isFirst, isLast, onMove, onUpdate, onDelete }: Slot
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-2 sm:flex-row sm:items-center sm:gap-1 sm:p-1.5">
+    <div className="flex flex-col gap-2 rounded-[var(--r-md)] border border-line p-2 sm:flex-row sm:items-center sm:gap-1.5 sm:p-2">
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={commitChanges}
-        className="h-10 sm:h-8 sm:flex-1"
+        className="h-9 sm:h-8 sm:flex-1 text-[13px]"
         placeholder="Nome"
       />
-      <div className="flex items-center gap-2 sm:gap-1">
+      <div className="flex items-center gap-1.5">
         <Input
           value={time}
           onChange={(e) => setTime(e.target.value)}
           onBlur={commitChanges}
-          className="h-10 w-24 sm:h-8 sm:w-20"
+          className="h-9 w-24 sm:h-8 sm:w-20 text-[13px]"
           placeholder="Hora"
         />
         <div className="flex flex-col">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-8 sm:w-5"
+          <button
+            className="h-[18px] w-7 grid place-items-center text-muted hover:text-ink disabled:opacity-30 transition-colors duration-[120ms]"
             disabled={isFirst}
             onClick={() => onMove(slot.id, -1)}
-            aria-label="Mover para cima"
           >
-            <ChevronUp className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-8 sm:w-5"
+            <ChevronUp size={13} />
+          </button>
+          <button
+            className="h-[18px] w-7 grid place-items-center text-muted hover:text-ink disabled:opacity-30 transition-colors duration-[120ms]"
             disabled={isLast}
             onClick={() => onMove(slot.id, 1)}
-            aria-label="Mover para baixo"
           >
-            <ChevronDown className="h-3 w-3" />
-          </Button>
+            <ChevronDown size={13} />
+          </button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 sm:h-8 sm:w-8 hover:text-destructive ml-auto"
+        <button
+          className="w-[30px] h-[30px] sm:w-[26px] sm:h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-[120ms] ml-auto"
           onClick={() => onDelete(slot.id)}
-          aria-label="Apagar"
         >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+          <Trash2 size={14} strokeWidth={1.6} />
+        </button>
       </div>
     </div>
   );

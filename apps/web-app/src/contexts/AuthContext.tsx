@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User } from '@/types';
-import { authService } from '@/services/authService';
+import { authService, AuthResponse } from '@/services/authService';
 import { getToken } from '@/lib/api';
 
 interface AuthContextType {
@@ -10,6 +10,7 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
+  setUserFromResponse: (response: AuthResponse) => void;
   logout: () => void;
   clearError: () => void;
 }
@@ -30,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = await authService.getMe();
           setUser(userData);
         } catch {
-          // Token invalid or expired, clear it
           authService.logout();
         }
       }
@@ -71,6 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setUserFromResponse = useCallback((response: AuthResponse) => {
+    setUser(response.user);
+  }, []);
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -80,16 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearError = () => setError(null);
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        user, 
-        isAuthenticated: !!user, 
-        isLoading, 
-        error, 
-        login, 
-        register, 
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        error,
+        login,
+        register,
+        setUserFromResponse,
         logout,
-        clearError 
+        clearError
       }}
     >
       {children}

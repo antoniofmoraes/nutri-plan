@@ -1,10 +1,14 @@
 import { api, setToken, removeToken } from '@/lib/api';
 import { User } from '@/types';
 
-interface AuthResponse {
+export interface AuthResponse {
   user: User;
   token: string;
 }
+
+export type GoogleAuthResult =
+  | { status: 'authenticated'; user: User; token: string; email?: never }
+  | { status: 'needs_linking'; email: string; user?: never; token?: never };
 
 interface LoginInput {
   email: string;
@@ -26,6 +30,20 @@ export const authService = {
 
   async register(input: RegisterInput): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/api/auth/register', input);
+    setToken(response.token);
+    return response;
+  },
+
+  async googleAuth(accessToken: string): Promise<GoogleAuthResult> {
+    const result = await api.post<GoogleAuthResult>('/api/auth/google', { accessToken });
+    if (result.status === 'authenticated') {
+      setToken(result.token);
+    }
+    return result;
+  },
+
+  async googleLink(accessToken: string, password: string): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/api/auth/google/link', { accessToken, password });
     setToken(response.token);
     return response;
   },

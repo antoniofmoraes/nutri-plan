@@ -52,25 +52,25 @@ export function CopyMealPopover({ plan, meal, currentDay, onCopy }: CopyMealPopo
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-6 text-xs px-1" title="Copiar para outros dias">
-          <Copy className="h-3 w-3" />
+        <Button variant="ghost" size="xs" className="px-1" title="Copiar para outros dias">
+          <Copy size={12} />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(14rem,90vw)] p-2" align="start">
-        <p className="text-xs font-semibold px-2 py-1.5">Copiar para:</p>
+        <p className="eyebrow px-2 py-1.5">Copiar para:</p>
         <button
           type="button"
           onClick={toggleAll}
-          className="w-full text-left px-2 py-1.5 text-xs hover:bg-secondary rounded"
+          className="w-full text-left px-2 py-1.5 text-[12.5px] hover:bg-surface-alt rounded-[var(--r-sm)] transition-[background] duration-[120ms]"
         >
           {selected.size === targets.length ? 'Desmarcar todos' : 'Marcar todos'}
         </button>
-        <div className="border-t my-1" />
+        <div className="border-t border-line my-1" />
         <div className="space-y-0.5 max-h-60 overflow-y-auto">
           {targets.map(({ day, meal: target }) => (
             <label
               key={target.id}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-secondary rounded cursor-pointer"
+              className="flex items-center gap-2 px-2 py-1.5 text-[12.5px] hover:bg-surface-alt rounded-[var(--r-sm)] cursor-pointer transition-[background] duration-[120ms]"
             >
               <Checkbox
                 checked={selected.has(target.id)}
@@ -78,17 +78,18 @@ export function CopyMealPopover({ plan, meal, currentDay, onCopy }: CopyMealPopo
               />
               <span className="flex-1">{day.label}</span>
               {target.foods.length > 0 && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="mono text-[10px] text-muted">
                   (sobrescreve)
                 </span>
               )}
             </label>
           ))}
         </div>
-        <div className="border-t mt-1 pt-2">
+        <div className="border-t border-line mt-1 pt-2">
           <Button
+            variant="acc"
             size="sm"
-            className="w-full h-7 text-xs bg-gradient-primary"
+            className="w-full"
             onClick={handleApply}
             disabled={selected.size === 0}
           >

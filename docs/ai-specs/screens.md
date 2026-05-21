@@ -1,0 +1,134 @@
+# Telas — PORTIO
+
+> Referência visual: `docs/design-handoff/reference/index.html`
+> JSX de referência: `docs/design-handoff/reference/screen-*.jsx`
+
+---
+
+## Layout shell
+
+- Sidebar fixa: `w-64`, full-height, `border-r border-line bg-paper`
+- Main: `flex-1 max-w-[1152px] mx-auto px-10 py-8 pb-20`
+- Mobile (≤900px): sidebar vira drawer, top bar `h-14` com hamburger + wordmark
+- Gap entre seções: `gap-7` (28px)
+
+### Sidebar
+
+```
+Logo: "PORTIO." (bold, tracking-tight, ponto em accent) + versão mono
+Separador: micro-label mono "PLANEJAMENTO"
+Nav items: px-3 py-2.5 rounded gap-[11px], ícone 18px
+  Ativo: bg-ink text-bg (NUNCA accent)
+  Hover: bg-surface-alt
+User row: avatar 36px rounded + nome + email mono + logout
+```
+
+---
+
+## `/login` e `/register`
+
+- Desktop: split 1:1. Login = form esquerda + painel escuro direita. Register = espelhado.
+- Painel escuro: `bg-ink text-bg`, marca PORTIO topo, headline 44px com frase serif itálica, número decorativo 2200 (4% alpha)
+- Mobile: só o form, sem painel
+- Form max-width `380px`, centrado vertical
+- CTA "Entrar"/"Criar conta" variante `acc`, `h-11` (44px)
+- Loading: `<spinner /> Entrando…` / `Criando…`
+
+---
+
+## `/` — Dashboard
+
+### Header
+- Eyebrow mono: `{dia_semana} · {data}`
+- h1: "Olá, {nome}." + sub `text-lg font-medium text-muted` "Aqui está sua semana."
+- Direita: dropdown de plano ativo
+
+### Day tabs
+Grid 7 colunas. Ver `components.md > Day tabs`.
+
+### Macros
+Card sem padding. Header com `border-b`: eyebrow "Macros · {dia}" + tabs viz (`Anel | Barras | Números`).
+- **Default: Anel** — 2 colunas (ring 240px + 2×2 macro cards)
+- Abaixo de 780px: coluna única
+
+### Refeições
+h2 "Refeições de {dia}" + contagem mono + tabs card variant (`Lista | Timeline | Compacto`).
+- **Default: Lista** — cards empilhados, header (nome + hora + badge cheat + macros), body = food chips
+- Refeição livre: badge `bg-accent text-accent-ink`, sem chips, texto "Refeição livre · macros não contabilizados."
+
+---
+
+## `/planos` — Lista de planos
+
+- Header: eyebrow "Coleção" + h1 + descrição `text-muted` max 56ch + CTA `acc` "Novo plano"
+- Grid responsivo: `grid gap-3.5 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]`
+- Plan card: `p-0`, duas regiões separadas por `border-b`
+  - Top `p-[22px]`: badge de objetivo (tint colorido 14%) + estrela favorito + nome h2 18px + meta mono
+  - Bottom `bg-surface-alt p-[10px_14px]`: chips macros mono + ícones edit/delete ghost
+- Badge tints por objetivo:
+  - Manutenção → `m-pro` (violet 14%)
+  - Emagrecimento → `m-cal` (orange 14%)
+  - Ganho de Massa → `m-fat` (teal 14%)
+
+---
+
+## `/planos/:id` — Detalhe do plano
+
+### Header
+- Back link mono: "← PLANOS"
+- h1 + estrela dourada + badge objetivo + meta mono
+- Toggle `Semana | Dia` + "Editar refeições" `sec`
+
+### Vista Dia
+- Day tabs
+- Card totais: eyebrow + macro line + 4 mini-stats (eyebrow + número mono grande + progress bar 60×3 colorida por macro)
+- EditMealCards: header (nome + hora + badge cheat + macros + menu "mais")
+  - Body: food rows com `border-b border-line`, cada row = nome + meta macro + input qty (90px mono right-align "g") + kcal calc (64px mono) + delete X
+  - Footer: "Adicionar alimento" `sec`
+- Menu "mais" (DropdownMenu): "Marcar como livre", "Copiar para outros dias"
+- Meal cheat: colapsa body → "Esta refeição não conta nos macros do dia. [Desmarcar]"
+
+### Vista Semana (desktop only — mobile força Dia)
+- **Default: Tabela** — min-width 1000px, scroll horizontal. Headers = dias + totais mono. Rows = slots. Cells = foods resumidos ou "Add" ghost dashed.
+
+---
+
+## `/alimentos` — Base de alimentos
+
+- Header: eyebrow "Base de dados" + h1 + descrição + CTA `acc`
+- Search: input 40px com ícone + contagem mono `"{N} de {total}"`
+- Desktop: tabela em card `p-0`, header `bg-surface-alt` mono uppercase
+  - Colunas: Nome (sans 13.5px 500), Porção (mono muted), kcal/P/C/G/Fib (mono colorido por macro), ações ghost
+- Mobile (≤780px): lista de cards por alimento
+  - Nome + porção topo, ícones edit/delete, grid 4 colunas de mini-stats coloridos
+
+---
+
+## `/refeicoes-prontas` — Presets
+
+- Header: eyebrow "Templates" + h1 + descrição + CTA `acc`
+- Cards empilhados, estilo accordion
+  - Collapsed: nome + meta mono (count · kcal · P/C/G) + botões ghost (apply/edit/delete)
+  - Expanded: body `bg-surface-alt`, rows de food (nome + macros + qty + kcal) + "Adicionar alimento" `sec`
+
+---
+
+## `/listas-compras` — Listas de compras
+
+- Grid responsivo, gap 14
+- List card: badge role ("Proprietário" accent / "Convidado · {nome}" outlined), nome h2 18px + meta count mono
+- Bottom `bg-surface-alt`: avatares empilhados com overlap
+
+---
+
+## `/listas-compras/:id` — Detalhe da lista
+
+- 2 colunas (`1fr 320px`, collapsa ≤780px)
+- Esquerda: card de itens (checkbox accent + nome + qty/unit mono)
+- Direita: card de membros (avatar 40px + nome + email mono + role tag)
+
+---
+
+## `/404`
+
+Card centrado. `text-[96px] font-mono` "404" + "Página não encontrada" + link "Voltar ao início".

@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NutriPlan.Api.Data;
@@ -10,7 +12,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class AuthService(AppDbContext db, IConfiguration config)
+public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFactory httpClientFactory)
 {
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
@@ -35,8 +37,64 @@ public class AuthService(AppDbContext db, IConfiguration config)
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
+        if (user is null)
             throw new ApiException("Credenciais inválidas", 401);
+        if (user.Password is null)
+            throw new ApiException("Esta conta usa login com Google. Use o botão 'Entrar com Google'.", 400);
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
+            throw new ApiException("Credenciais inválidas", 401);
+
+        var token = GenerateToken(user);
+        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
+    }
+
+    public async Task<GoogleAuthResponse> GoogleAuthAsync(string accessToken)
+    {
+        var googleUser = await GetGoogleUserInfoAsync(accessToken);
+
+        // Already linked — login directly
+        var user = await db.Users.FirstOrDefaultAsync(u => u.GoogleId == googleUser.Sub);
+        if (user is not null)
+        {
+            var token = GenerateToken(user);
+            return GoogleAuthResponse.Authenticated(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
+        }
+
+        // Email exists but not linked — needs password confirmation
+        var existingByEmail = await db.Users.FirstOrDefaultAsync(u => u.Email == googleUser.Email);
+        if (existingByEmail is not null)
+            return GoogleAuthResponse.NeedsLinking(googleUser.Email);
+
+        // New user — create account
+        var newUser = new User
+        {
+            Name = googleUser.Name ?? googleUser.Email,
+            Email = googleUser.Email,
+            GoogleId = googleUser.Sub
+        };
+        db.Users.Add(newUser);
+        await db.SaveChangesAsync();
+
+        var newToken = GenerateToken(newUser);
+        return GoogleAuthResponse.Authenticated(new UserDto(newUser.Id, newUser.Name, newUser.Email, newUser.MainMealPlanId), newToken);
+    }
+
+    public async Task<AuthResponse> GoogleLinkAsync(string accessToken, string password)
+    {
+        var googleUser = await GetGoogleUserInfoAsync(accessToken);
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == googleUser.Email);
+        if (user is null)
+            throw new ApiException("Conta não encontrada", 404);
+
+        if (user.Password is null)
+            throw new ApiException("Esta conta não possui senha definida", 400);
+
+        if (!BCrypt.Net.BCrypt.Verify(password, user.Password))
+            throw new ApiException("Senha incorreta", 401);
+
+        user.GoogleId = googleUser.Sub;
+        await db.SaveChangesAsync();
 
         var token = GenerateToken(user);
         return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
@@ -49,6 +107,25 @@ public class AuthService(AppDbContext db, IConfiguration config)
             throw new ApiException("Usuário não encontrado", 404);
 
         return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.CreatedAt);
+    }
+
+    private async Task<GoogleUserInfo> GetGoogleUserInfoAsync(string accessToken)
+    {
+        var client = httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await client.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
+        if (!response.IsSuccessStatusCode)
+            throw new ApiException("Token do Google inválido", 401);
+
+        var json = await response.Content.ReadAsStringAsync();
+        var userInfo = JsonSerializer.Deserialize<GoogleUserInfo>(json)
+            ?? throw new ApiException("Resposta inválida do Google", 502);
+
+        if (string.IsNullOrEmpty(userInfo.Email))
+            throw new ApiException("Não foi possível obter o email da conta Google", 400);
+
+        return userInfo;
     }
 
     private string GenerateToken(User user)

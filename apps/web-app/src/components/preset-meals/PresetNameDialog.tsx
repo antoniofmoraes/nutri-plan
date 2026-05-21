@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 interface PresetNameDialogProps {
   open: boolean;
@@ -24,26 +26,29 @@ export function PresetNameDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display">
-            {isEditing ? 'Renomear Refeição Pronta' : 'Nova Refeição Pronta'}
+          <DialogTitle>
+            {isEditing ? 'Renomear refeição pronta' : 'Nova refeição pronta'}
           </DialogTitle>
+          <DialogDescription>
+            {isEditing ? 'Altere o nome da refeição.' : 'Dê um nome para a refeição.'}
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Nome</Label>
+        <DialogBody>
+          <div>
+            <label className="label-mono">Nome</label>
             <Input
-              placeholder="Ex: Almoço Frango com Arroz"
+              placeholder="Ex: Almoço frango com arroz"
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') onSubmit(); }}
             />
           </div>
-        </div>
+        </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
+            <Button variant="ghost">Cancelar</Button>
           </DialogClose>
-          <Button onClick={onSubmit} className="bg-gradient-primary" disabled={!name.trim()}>
+          <Button variant="acc" onClick={onSubmit} disabled={!name.trim()}>
             {isEditing ? 'Salvar' : 'Criar'}
           </Button>
         </DialogFooter>

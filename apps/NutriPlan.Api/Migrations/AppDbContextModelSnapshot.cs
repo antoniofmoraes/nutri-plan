@@ -420,7 +420,6 @@ namespace NutriPlan.Api.Migrations
                         .HasColumnName("name");
 
                     b.Property<string>("Password")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password");
 

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter, DialogClose,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FoodSearchPopover } from '@/components/shared/FoodSearchPopover';
 import type { Food } from '@/types';
 
@@ -41,19 +43,22 @@ export function AddFoodToPresetDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-display">Adicionar Alimento</DialogTitle>
+          <DialogTitle>Adicionar alimento</DialogTitle>
+          <DialogDescription>
+            Selecione um alimento e a quantidade.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Alimento</Label>
+        <DialogBody>
+          <div>
+            <label className="label-mono">Alimento</label>
             <FoodSearchPopover
               foods={foods}
               selectedFoodId={selectedFoodId}
               onSelect={setSelectedFoodId}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Quantidade (gramas)</Label>
+          <div>
+            <label className="label-mono">Quantidade (gramas)</label>
             <Input
               type="number"
               inputMode="decimal"
@@ -62,12 +67,12 @@ export function AddFoodToPresetDialog({
               onChange={(e) => setFoodQuantity(e.target.value)}
             />
           </div>
-        </div>
+        </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
+            <Button variant="ghost">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleAdd} className="bg-gradient-primary" disabled={!selectedFoodId}>
+          <Button variant="acc" onClick={handleAdd} disabled={!selectedFoodId}>
             Adicionar
           </Button>
         </DialogFooter>

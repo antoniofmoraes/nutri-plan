@@ -11,11 +11,16 @@ App full-stack de planejamento alimentar (planos semanais, refeições, alimento
 - **Monorepo simples** em `apps/`: nada de turborepo/nx — apenas duas pastas.
 - **Idioma**: UI, mensagens de erro, commits e domínio em **português**. Código (identificadores, tipos, comentários quando existirem) em **inglês**.
 - **Deploy**: Coolify aponta para `docker-compose.yml` (produção). Local usa `docker-compose.local.yml`.
+- **AI Specs**: `docs/ai-specs/` contém especificações compactas do redesign PORTIO (tokens, componentes, telas, backend, guard-rails). **Leia `docs/ai-specs/guard-rails.md` antes de qualquer mudança de UI ou backend.**
+- **Design Handoff**: `docs/design-handoff/` contém o protótipo interativo de referência (`reference/index.html`). Abra no browser para source of truth visual.
 
 ```
 apps/
   NutriPlan.Api/   → backend .NET 10 (Minimal APIs + EF Core + PostgreSQL)
   web-app/         → frontend React 18 + Vite + TS + shadcn/ui + Tailwind
+docs/
+  ai-specs/        → specs do redesign PORTIO para consumo por IAs
+  design-handoff/  → protótipo interativo + spec original do redesign
 ```
 
 ---

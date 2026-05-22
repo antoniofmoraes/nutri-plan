@@ -47,6 +47,30 @@ export type WeekDay = 'segunda' | 'terca' | 'quarta' | 'quinta' | 'sexta' | 'sab
 
 export type PlanGoal = 'emagrecer' | 'manter' | 'ganhar';
 
+export interface MealPlanShareInfo {
+  userId: string;
+  userName: string;
+  canEdit: boolean;
+  sharedAt: Date;
+}
+
+export interface MealPlanInviteInfo {
+  token: string;
+  expiresAt: Date;
+  inviteUrl: string;
+  canEdit: boolean;
+}
+
+export interface InvitePreview {
+  planId: string;
+  planName: string;
+  planGoal: string;
+  dailyCalories: number;
+  slotCount: number;
+  ownerName: string;
+  canEdit: boolean;
+}
+
 export interface MealPlan {
   id: string;
   name: string;
@@ -56,6 +80,11 @@ export interface MealPlan {
   dailyCarbs?: number | null;
   dailyFat?: number | null;
   isMain: boolean;
+  role: 'owner' | 'shared';
+  canEdit: boolean;
+  ownerName?: string | null;
+  sharedWith?: MealPlanShareInfo | null;
+  activeInvite?: MealPlanInviteInfo | null;
   slots: MealSlot[];
   days: DayPlan[];
   createdAt: Date;

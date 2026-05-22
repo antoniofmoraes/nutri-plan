@@ -17,7 +17,7 @@ public class MealFoodService(AppDbContext db)
 
         if (meal is null)
             throw new ApiException("Refeição não encontrada", 404);
-        meal.AssertOwnership(userId);
+        meal.AssertReadAccess(userId);
 
         return meal.Foods.Select(ToResponse).ToList();
     }
@@ -135,7 +135,7 @@ public class MealFoodService(AppDbContext db)
 
         if (meal is null)
             throw new ApiException("Refeição não encontrada", 404);
-        meal.AssertOwnership(userId);
+        meal.AssertEditAccess(userId);
 
         return meal;
     }

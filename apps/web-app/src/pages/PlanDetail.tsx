@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Star, CalendarRange } from 'lucide-react';
+import { Star, CalendarRange, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useMealPlan } from '@/hooks/useMealPlans';
+import { useMealPlan, useMealPlanSharing } from '@/hooks/useMealPlans';
 import { useAllFoods } from '@/hooks/useFoods';
 import { usePresetMeals } from '@/hooks/usePresetMeals';
 import { calculateMealMacros, calculateDayMacros } from '@/lib/macros';
@@ -13,7 +13,9 @@ import { WeekView } from '@/components/plan-detail/WeekView';
 import { DayView } from '@/components/plan-detail/DayView';
 import { SlotsManagerDialog } from '@/components/plan-detail/SlotsManagerDialog';
 import { AddFoodDialog } from '@/components/plan-detail/AddFoodDialog';
+import { ShareDialog } from '@/components/plan-sharing/ShareDialog';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type ViewMode = 'week' | 'day';
 
@@ -31,9 +33,12 @@ export default function PlanDetail() {
     addFoodToMeal, removeFoodFromMeal, updateMealFood,
     setMealCheat, copyMeal, applyPreset,
   } = useMealPlan(id);
+  const sharing = useMealPlanSharing(id);
   const { foods } = useAllFoods();
   const { presetMeals } = usePresetMeals();
   const isMobile = useIsMobile();
+  const isOwner = plan?.role === 'owner';
+  const canEditPlan = plan?.canEdit ?? false;
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const effectiveViewMode: ViewMode = isMobile ? 'day' : viewMode;
   const [selectedDay, setSelectedDay] = useState<WeekDay>('segunda');
@@ -108,6 +113,16 @@ export default function PlanDetail() {
       alert(err instanceof Error ? err.message : 'Erro ao copiar');
     }
   };
+  const handleLeaveShare = async () => {
+    if (!confirm('Sair deste plano compartilhado?')) return;
+    try {
+      await sharing.leaveShare();
+      toast.success('Você saiu do plano');
+      navigate('/planos');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao sair do plano');
+    }
+  };
   const goToDayView = (day: WeekDay) => {
     setSelectedDay(day);
     setViewMode('day');
@@ -132,8 +147,16 @@ export default function PlanDetail() {
               <Star size={20} fill="var(--accent)" className="text-accent" />
             )}
           </div>
-          <div className="flex items-center gap-2.5 mt-2">
+          <div className="flex items-center gap-2.5 mt-2 flex-wrap">
             <Badge variant="accent">{goalLabels[plan.goal]}</Badge>
+            {!isOwner && (
+              <Badge variant="secondary">
+                Compartilhado por {plan.ownerName}
+              </Badge>
+            )}
+            {!isOwner && !canEditPlan && (
+              <Badge variant="outline">Somente leitura</Badge>
+            )}
             <span className="mono text-[11.5px] text-muted">
               {plan.dailyCalories.toLocaleString("pt-BR")} kcal/dia · {plan.slots.length} refeições
             </span>
@@ -166,9 +189,18 @@ export default function PlanDetail() {
               </button>
             </div>
           )}
-          <Button variant="sec" onClick={() => setSlotsManagerOpen(true)}>
-            Editar refeições
-          </Button>
+          {isOwner && <ShareDialog plan={plan} />}
+          {canEditPlan && (
+            <Button variant="sec" onClick={() => setSlotsManagerOpen(true)}>
+              Editar refeições
+            </Button>
+          )}
+          {!isOwner && (
+            <Button variant="outline" size="sm" onClick={handleLeaveShare}>
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sair</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -182,13 +214,16 @@ export default function PlanDetail() {
           <p className="text-muted max-w-[360px] mb-5">
             Adicione uma refeição para começar (Café da manhã, Almoço, …)
           </p>
-          <Button variant="acc" onClick={() => setSlotsManagerOpen(true)}>
-            Editar refeições
-          </Button>
+          {canEditPlan && (
+            <Button variant="acc" onClick={() => setSlotsManagerOpen(true)}>
+              Editar refeições
+            </Button>
+          )}
         </div>
       ) : effectiveViewMode === 'week' ? (
         <WeekView
           plan={plan}
+          readOnly={!canEditPlan}
           onDayClick={goToDayView}
           onAddFood={handleOpenFoodDialog}
           onRemoveFood={handleRemoveFood}
@@ -200,6 +235,7 @@ export default function PlanDetail() {
       ) : (
         <DayView
           plan={plan}
+          readOnly={!canEditPlan}
           day={selectedDay}
           foods={foods}
           onChangeDay={setSelectedDay}

@@ -16,6 +16,22 @@ public static class MealAccess
             throw new ApiException("Acesso negado", 403);
     }
 
+    public static void AssertEditAccess(this Meal meal, Guid userId)
+    {
+        var plan = meal.DayPlan.MealPlan;
+        if (plan.UserId == userId) return;
+        if (plan.SharedWithUserId == userId && plan.CanEdit) return;
+        throw new ApiException("Acesso negado", 403);
+    }
+
+    public static void AssertReadAccess(this Meal meal, Guid userId)
+    {
+        var plan = meal.DayPlan.MealPlan;
+        if (plan.UserId == userId) return;
+        if (plan.SharedWithUserId == userId) return;
+        throw new ApiException("Acesso negado", 403);
+    }
+
     public static void ReplaceFoods(this AppDbContext db, Meal target, IEnumerable<(Guid FoodId, double Quantity)> source)
     {
         db.MealFoods.RemoveRange(target.Foods);

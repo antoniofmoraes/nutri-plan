@@ -13,7 +13,7 @@ interface DayViewProps extends ViewProps {
   onUpdateFood: (mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }) => void;
 }
 
-export function DayView({ plan, day, foods, onChangeDay, onAddFood, onRemoveFood, onUpdateFood, onToggleCheat, calculateDayMacros, calculateMealMacros }: DayViewProps) {
+export function DayView({ plan, readOnly, day, foods, onChangeDay, onAddFood, onRemoveFood, onUpdateFood, onToggleCheat, calculateDayMacros, calculateMealMacros }: DayViewProps) {
   const dayPlan = plan.days.find(d => d.day === day);
   const dayMacros = dayPlan ? calculateDayMacros(dayPlan) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
@@ -120,13 +120,15 @@ export function DayView({ plan, day, foods, onChangeDay, onAddFood, onRemoveFood
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => onToggleCheat(meal.id, meal.isCheat)}
-                  >
-                    {meal.isCheat ? 'Desmarcar livre' : 'Marcar livre'}
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onToggleCheat(meal.id, meal.isCheat)}
+                    >
+                      {meal.isCheat ? 'Desmarcar livre' : 'Marcar livre'}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Meal body */}
@@ -138,15 +140,19 @@ export function DayView({ plan, day, foods, onChangeDay, onAddFood, onRemoveFood
                   <div className="border-t border-line">
                     {meal.foods.length === 0 ? (
                       <div className="p-4">
-                        <Button
-                          variant="sec"
-                          size="sm"
-                          className="w-full border-dashed"
-                          onClick={() => onAddFood(meal.id)}
-                        >
-                          <Plus size={14} />
-                          Adicionar alimento
-                        </Button>
+                        {readOnly ? (
+                          <p className="text-muted text-sm text-center">Nenhum alimento cadastrado</p>
+                        ) : (
+                          <Button
+                            variant="sec"
+                            size="sm"
+                            className="w-full border-dashed"
+                            onClick={() => onAddFood(meal.id)}
+                          >
+                            <Plus size={14} />
+                            Adicionar alimento
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <div>
@@ -156,20 +162,23 @@ export function DayView({ plan, day, foods, onChangeDay, onAddFood, onRemoveFood
                             foods={foods}
                             currentFood={food}
                             currentQuantity={quantity}
+                            readOnly={readOnly}
                             onSave={(updates) => onUpdateFood(meal.id, food.id, updates)}
                             onRemove={() => onRemoveFood(meal.id, food.id)}
                           />
                         ))}
-                        <div className="p-3 pt-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onAddFood(meal.id)}
-                          >
-                            <Plus size={14} />
-                            Adicionar alimento
-                          </Button>
-                        </div>
+                        {!readOnly && (
+                          <div className="p-3 pt-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onAddFood(meal.id)}
+                            >
+                              <Plus size={14} />
+                              Adicionar alimento
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -32,10 +32,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<MealPlan>(entity =>
         {
+            entity.HasIndex(mp => mp.InviteToken).IsUnique().HasFilter("\"inviteToken\" IS NOT NULL");
             entity.HasOne(mp => mp.User)
                 .WithMany(u => u.MealPlans)
                 .HasForeignKey(mp => mp.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(mp => mp.SharedWithUser)
+                .WithMany(u => u.SharedMealPlans)
+                .HasForeignKey(mp => mp.SharedWithUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DayPlan>(entity =>

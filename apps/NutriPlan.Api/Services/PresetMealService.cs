@@ -140,7 +140,7 @@ public class PresetMealService(AppDbContext db)
 
         foreach (var target in targets)
         {
-            target.AssertOwnership(userId);
+            target.AssertEditAccess(userId);
             db.ReplaceFoods(target, items);
         }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { register, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = (location.state as { returnUrl?: string })?.returnUrl;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +26,7 @@ export default function Register() {
       const success = await register(name, email, password);
       if (success) {
         toast.success('Conta criada!');
-        navigate('/');
+        navigate(returnUrl || '/');
       }
     } catch {
       // error captured by AuthContext

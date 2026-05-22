@@ -9,11 +9,12 @@ interface EditableFoodRowProps {
   foods: Food[];
   currentFood: Food;
   currentQuantity: number;
+  readOnly?: boolean;
   onSave: (updates: { newFoodId?: string; quantity?: number }) => void;
   onRemove: () => void;
 }
 
-export function EditableFoodRow({ foods, currentFood, currentQuantity, onSave, onRemove }: EditableFoodRowProps) {
+export function EditableFoodRow({ foods, currentFood, currentQuantity, readOnly, onSave, onRemove }: EditableFoodRowProps) {
   const [editing, setEditing] = useState(false);
   const [foodId, setFoodId] = useState(currentFood.id);
   const [quantity, setQuantity] = useState(currentQuantity.toString());
@@ -57,22 +58,24 @@ export function EditableFoodRow({ foods, currentFood, currentQuantity, onSave, o
             {kcal} kcal
           </span>
         </div>
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-[120ms]">
-          <button
-            className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-[120ms]"
-            onClick={startEdit}
-            title="Editar"
-          >
-            <Edit size={13} strokeWidth={1.6} />
-          </button>
-          <button
-            className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-[120ms]"
-            onClick={onRemove}
-            title="Remover"
-          >
-            <X size={13} strokeWidth={1.6} />
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-[120ms]">
+            <button
+              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-[120ms]"
+              onClick={startEdit}
+              title="Editar"
+            >
+              <Edit size={13} strokeWidth={1.6} />
+            </button>
+            <button
+              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-[120ms]"
+              onClick={onRemove}
+              title="Remover"
+            >
+              <X size={13} strokeWidth={1.6} />
+            </button>
+          </div>
+        )}
       </div>
     );
   }

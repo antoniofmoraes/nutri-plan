@@ -11,6 +11,7 @@ export interface MacroResult {
 
 export interface ViewProps {
   plan: MealPlan;
+  readOnly?: boolean;
   onAddFood: (mealId: string) => void;
   onRemoveFood: (mealId: string, foodId: string) => void;
   onToggleCheat: (mealId: string, currentlyCheat: boolean) => void;

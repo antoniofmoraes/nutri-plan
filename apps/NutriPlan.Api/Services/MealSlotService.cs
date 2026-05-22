@@ -10,7 +10,7 @@ public class MealSlotService(AppDbContext db)
 {
     public async Task<MealSlotResponse> CreateAsync(Guid planId, Guid userId, CreateMealSlotRequest request)
     {
-        var plan = await LoadOwnedPlanAsync(planId, userId, q => q.Include(mp => mp.Days).Include(mp => mp.Slots));
+        var plan = await LoadEditablePlanAsync(planId, userId, q => q.Include(mp => mp.Days).Include(mp => mp.Slots));
 
         var nextSortOrder = plan.Slots.Count == 0 ? 0 : plan.Slots.Max(s => s.SortOrder) + 1;
 
@@ -41,7 +41,7 @@ public class MealSlotService(AppDbContext db)
 
     public async Task<MealSlotResponse> UpdateAsync(Guid planId, Guid slotId, Guid userId, UpdateMealSlotRequest request)
     {
-        var slot = await LoadOwnedSlotAsync(planId, slotId, userId);
+        var slot = await LoadEditableSlotAsync(planId, slotId, userId);
 
         if (request.Name is not null) slot.Name = request.Name;
         if (request.Time is not null) slot.Time = string.IsNullOrWhiteSpace(request.Time) ? null : request.Time;
@@ -52,7 +52,7 @@ public class MealSlotService(AppDbContext db)
 
     public async Task ReorderAsync(Guid planId, Guid userId, List<Guid> slotIds)
     {
-        var plan = await LoadOwnedPlanAsync(planId, userId, q => q.Include(mp => mp.Slots));
+        var plan = await LoadEditablePlanAsync(planId, userId, q => q.Include(mp => mp.Slots));
 
         var planSlotIds = plan.Slots.Select(s => s.Id).ToHashSet();
         if (slotIds.Count != planSlotIds.Count || !slotIds.All(planSlotIds.Contains))
@@ -69,31 +69,29 @@ public class MealSlotService(AppDbContext db)
 
     public async Task DeleteAsync(Guid planId, Guid slotId, Guid userId)
     {
-        var slot = await LoadOwnedSlotAsync(planId, slotId, userId);
+        var slot = await LoadEditableSlotAsync(planId, slotId, userId);
 
         db.MealSlots.Remove(slot);
         await db.SaveChangesAsync();
     }
 
-    private async Task<MealPlan> LoadOwnedPlanAsync(Guid planId, Guid userId, Func<IQueryable<MealPlan>, IQueryable<MealPlan>> withIncludes)
+    private async Task<MealPlan> LoadEditablePlanAsync(Guid planId, Guid userId, Func<IQueryable<MealPlan>, IQueryable<MealPlan>> withIncludes)
     {
         var plan = await withIncludes(db.MealPlans).FirstOrDefaultAsync(mp => mp.Id == planId);
         if (plan is null)
             throw new ApiException("Plano alimentar não encontrado", 404);
-        if (plan.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        MealPlanService.AssertEditAccess(plan, userId);
         return plan;
     }
 
-    private async Task<MealSlot> LoadOwnedSlotAsync(Guid planId, Guid slotId, Guid userId)
+    private async Task<MealSlot> LoadEditableSlotAsync(Guid planId, Guid slotId, Guid userId)
     {
         var slot = await db.MealSlots
             .Include(s => s.MealPlan)
             .FirstOrDefaultAsync(s => s.Id == slotId && s.MealPlanId == planId);
         if (slot is null)
             throw new ApiException("Refeição não encontrada", 404);
-        if (slot.MealPlan.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        MealPlanService.AssertEditAccess(slot.MealPlan, userId);
         return slot;
     }
 }

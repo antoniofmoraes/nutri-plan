@@ -16,8 +16,10 @@ export default function PresetMeals() {
     presetMeals,
     addPresetMeal,
     updatePresetMeal,
+    duplicatePresetMeal,
     deletePresetMeal,
     addFoodToPreset,
+    updateFoodInPreset,
     removeFoodFromPreset,
     applyPreset,
   } = usePresetMeals();
@@ -117,11 +119,14 @@ export default function PresetMeals() {
               preset={preset}
               isExpanded={expandedId === preset.id}
               canApply={mealPlans.length > 0}
+              allFoods={foods}
               onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
+              onDuplicate={() => duplicatePresetMeal(preset.id)}
               onEdit={() => handleOpenEdit(preset)}
               onDelete={() => setDeleteTarget(preset.id)}
               onAddFood={() => setFoodDialogPresetId(preset.id)}
               onRemoveFood={(foodId) => removeFoodFromPreset(preset.id, foodId)}
+              onUpdateFood={(foodId, updates) => updateFoodInPreset(preset.id, foodId, updates)}
               onApply={() => setApplyPresetId(preset.id)}
             />
           ))}

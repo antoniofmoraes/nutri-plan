@@ -31,7 +31,7 @@ public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFact
         await db.SaveChangesAsync();
 
         var token = GenerateToken(user);
-        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
+        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.IsAdmin), token);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -45,7 +45,7 @@ public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFact
             throw new ApiException("Credenciais inválidas", 401);
 
         var token = GenerateToken(user);
-        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
+        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.IsAdmin), token);
     }
 
     public async Task<GoogleAuthResponse> GoogleAuthAsync(string accessToken)
@@ -57,7 +57,7 @@ public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFact
         if (user is not null)
         {
             var token = GenerateToken(user);
-            return GoogleAuthResponse.Authenticated(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
+            return GoogleAuthResponse.Authenticated(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.IsAdmin), token);
         }
 
         // Email exists but not linked — needs password confirmation
@@ -76,7 +76,7 @@ public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFact
         await db.SaveChangesAsync();
 
         var newToken = GenerateToken(newUser);
-        return GoogleAuthResponse.Authenticated(new UserDto(newUser.Id, newUser.Name, newUser.Email, newUser.MainMealPlanId), newToken);
+        return GoogleAuthResponse.Authenticated(new UserDto(newUser.Id, newUser.Name, newUser.Email, newUser.MainMealPlanId, newUser.IsAdmin), newToken);
     }
 
     public async Task<AuthResponse> GoogleLinkAsync(string accessToken, string password)
@@ -97,7 +97,7 @@ public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFact
         await db.SaveChangesAsync();
 
         var token = GenerateToken(user);
-        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId), token);
+        return new AuthResponse(new UserDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.IsAdmin), token);
     }
 
     public async Task<UserWithDateDto> GetMeAsync(Guid userId)
@@ -106,7 +106,7 @@ public class AuthService(AppDbContext db, IConfiguration config, IHttpClientFact
         if (user is null)
             throw new ApiException("Usuário não encontrado", 404);
 
-        return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.CreatedAt);
+        return new UserWithDateDto(user.Id, user.Name, user.Email, user.MainMealPlanId, user.IsAdmin, user.CreatedAt);
     }
 
     private async Task<GoogleUserInfo> GetGoogleUserInfoAsync(string accessToken)

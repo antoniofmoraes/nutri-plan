@@ -439,6 +439,9 @@ presetMeals.MapPost("/", async (HttpContext ctx, CreatePresetMealRequest request
 presetMeals.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdatePresetMealRequest request, PresetMealService svc) =>
     Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request))));
 
+presetMeals.MapPost("/{id:guid}/duplicate", async (Guid id, HttpContext ctx, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.DuplicateAsync(id, GetUserId(ctx))), statusCode: 201));
+
 presetMeals.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc) =>
 {
     await svc.DeleteAsync(id, GetUserId(ctx));

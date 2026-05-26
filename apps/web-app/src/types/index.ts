@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   mainMealPlanId?: string | null;
+  isAdmin?: boolean;
 }
 
 export interface Food {

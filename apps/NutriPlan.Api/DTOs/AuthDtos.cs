@@ -31,9 +31,9 @@ public record LoginRequest
 
 public record AuthResponse(UserDto User, string Token);
 
-public record UserDto(Guid Id, string Name, string Email, Guid? MainMealPlanId);
+public record UserDto(Guid Id, string Name, string Email, Guid? MainMealPlanId, bool IsAdmin);
 
-public record UserWithDateDto(Guid Id, string Name, string Email, Guid? MainMealPlanId, DateTime CreatedAt);
+public record UserWithDateDto(Guid Id, string Name, string Email, Guid? MainMealPlanId, bool IsAdmin, DateTime CreatedAt);
 
 public record GoogleAuthRequest
 {

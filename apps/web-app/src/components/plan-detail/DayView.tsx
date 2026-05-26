@@ -64,33 +64,50 @@ export function DayView({ plan, readOnly, day, foods, onChangeDay, onAddFood, on
       </div>
 
       {/* Day totals */}
-      <div className="bg-surface border border-line rounded-lg shadow-1 p-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="eyebrow mb-1">Totais do dia</div>
-            <div className="mono text-[11.5px] text-muted">
-              meta {target.cal.toLocaleString("pt-BR")} kcal
-            </div>
-          </div>
-          <div className="flex gap-4">
-            {macroStats.map((s) => {
-              const pct = Math.min(100, Math.round((s.value / s.target) * 100));
-              return (
-                <div key={s.key} className="text-center min-w-[60px]">
-                  <div className="eyebrow mb-1">{s.label}</div>
-                  <div className="num text-[18px] font-semibold leading-none mb-1.5">
-                    {Math.round(s.value)}
-                  </div>
-                  <div className="h-[3px] w-[60px] bg-surface-alt rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-300"
-                      style={{ width: `${pct}%`, background: s.color }}
-                    />
-                  </div>
+      <div className="bg-surface border border-line rounded-lg shadow-1 p-4 space-y-4">
+        <div className="eyebrow">Totais do dia</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {macroStats.map((s) => {
+            const pct = Math.min(100, Math.round((s.value / s.target) * 100));
+            const remaining = s.target - s.value;
+            const over = remaining < 0;
+            return (
+              <div
+                key={s.key}
+                className="rounded-lg border border-line bg-surface-alt/40 px-3 py-3 flex flex-col gap-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11.5px] font-semibold uppercase tracking-wider" style={{ color: s.color }}>
+                    {s.label}
+                  </span>
+                  <span className="mono text-[10.5px] text-muted">{pct}%</span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="num text-[22px] font-bold leading-none" style={{ color: s.color }}>
+                    {Math.round(s.value)}
+                  </span>
+                  <span className="mono text-[13px] text-muted font-medium">
+                    / {s.target} {s.unit}
+                  </span>
+                </div>
+                <div className="h-[4px] bg-surface-alt rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300"
+                    style={{ width: `${pct}%`, background: s.color }}
+                  />
+                </div>
+                <div className={cn(
+                  'mono text-[11px] font-medium',
+                  over ? 'text-danger' : 'text-muted'
+                )}>
+                  {over
+                    ? `+${Math.abs(Math.round(remaining))} ${s.unit} acima`
+                    : `faltam ${Math.round(remaining)} ${s.unit}`
+                  }
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

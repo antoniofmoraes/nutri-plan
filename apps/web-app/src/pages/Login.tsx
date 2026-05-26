@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = (location.state as { returnUrl?: string })?.returnUrl;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export default function Login() {
       const success = await login(email, password);
       if (success) {
         toast.success('Bem-vindo de volta!');
-        navigate('/');
+        navigate(returnUrl || '/');
       }
     } catch {
       // error captured by AuthContext

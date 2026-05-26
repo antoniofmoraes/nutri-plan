@@ -14,25 +14,36 @@ public class MealPlanService(AppDbContext db)
     {
         var mainPlanId = await GetMainPlanIdAsync(userId);
 
-        var plans = await GetPlansQuery()
+        var ownedPlans = await GetPlansQuery()
             .Where(mp => mp.UserId == userId)
             .OrderByDescending(mp => mp.Id == mainPlanId)
             .ThenByDescending(mp => mp.CreatedAt)
             .ToListAsync();
 
-        return plans.Select(p => ToResponse(p, mainPlanId)).ToList();
+        var sharedPlans = await GetPlansQuery()
+            .Include(mp => mp.User)
+            .Where(mp => mp.SharedWithUserId == userId)
+            .OrderByDescending(mp => mp.CreatedAt)
+            .ToListAsync();
+
+        var result = ownedPlans.Select(p => ToResponse(p, userId, mainPlanId)).ToList();
+        result.AddRange(sharedPlans.Select(p => ToResponse(p, userId, mainPlanId)));
+        return result;
     }
 
     public async Task<MealPlanResponse> GetByIdAsync(Guid id, Guid userId)
     {
-        var plan = await GetPlansQuery().FirstOrDefaultAsync(mp => mp.Id == id);
+        var plan = await GetPlansQuery()
+            .Include(mp => mp.User)
+            .Include(mp => mp.SharedWithUser)
+            .FirstOrDefaultAsync(mp => mp.Id == id);
         if (plan is null)
             throw new ApiException("Plano alimentar não encontrado", 404);
-        if (plan.UserId != userId)
+        if (plan.UserId != userId && plan.SharedWithUserId != userId)
             throw new ApiException("Acesso negado", 403);
 
         var mainPlanId = await GetMainPlanIdAsync(userId);
-        return ToResponse(plan, mainPlanId);
+        return ToResponse(plan, userId, mainPlanId);
     }
 
     public async Task<MealPlanResponse> CreateAsync(Guid userId, CreateMealPlanRequest request)
@@ -52,17 +63,18 @@ public class MealPlanService(AppDbContext db)
         db.MealPlans.Add(plan);
         await db.SaveChangesAsync();
 
-        // New plan can't be the main plan yet (SetMainPlanAsync is a separate op).
-        return ToResponse(plan, mainPlanId: null);
+        return ToResponse(plan, userId, mainPlanId: null);
     }
 
     public async Task<MealPlanResponse> UpdateAsync(Guid id, Guid userId, UpdateMealPlanRequest request)
     {
-        var plan = await GetPlansQuery().FirstOrDefaultAsync(mp => mp.Id == id);
+        var plan = await GetPlansQuery()
+            .Include(mp => mp.User)
+            .Include(mp => mp.SharedWithUser)
+            .FirstOrDefaultAsync(mp => mp.Id == id);
         if (plan is null)
             throw new ApiException("Plano alimentar não encontrado", 404);
-        if (plan.UserId != userId)
-            throw new ApiException("Acesso negado", 403);
+        AssertEditAccess(plan, userId);
 
         if (request.Name is not null) plan.Name = request.Name;
         if (request.Goal is not null) plan.Goal = request.Goal;
@@ -73,7 +85,7 @@ public class MealPlanService(AppDbContext db)
 
         await db.SaveChangesAsync();
         var mainPlanId = await GetMainPlanIdAsync(userId);
-        return ToResponse(plan, mainPlanId);
+        return ToResponse(plan, userId, mainPlanId);
     }
 
     public async Task DeleteAsync(Guid id, Guid userId)
@@ -105,8 +117,39 @@ public class MealPlanService(AppDbContext db)
                     .ThenInclude(m => m.Foods)
                         .ThenInclude(mf => mf.Food);
 
-    public static MealPlanResponse ToResponse(MealPlan plan, Guid? mainPlanId = null)
+    public static MealPlanResponse ToResponse(MealPlan plan, Guid requestingUserId, Guid? mainPlanId = null)
     {
+        var isOwner = plan.UserId == requestingUserId;
+        var role = isOwner ? "owner" : "shared";
+        var canEdit = isOwner || plan.CanEdit;
+        var ownerName = isOwner ? null : plan.User?.Name;
+
+        ShareInfoResponse? sharedWith = null;
+        MealPlanInviteResponse? activeInvite = null;
+
+        if (isOwner)
+        {
+            if (plan.SharedWithUserId is not null && plan.SharedWithUser is not null)
+            {
+                sharedWith = new ShareInfoResponse(
+                    plan.SharedWithUserId.Value,
+                    plan.SharedWithUser.Name,
+                    plan.CanEdit,
+                    plan.SharedAt!.Value
+                );
+            }
+
+            if (plan.InviteToken is not null && plan.InviteExpiresAt is not null && plan.InviteExpiresAt > DateTime.UtcNow)
+            {
+                activeInvite = new MealPlanInviteResponse(
+                    plan.InviteToken,
+                    plan.InviteExpiresAt.Value,
+                    $"/convite/{plan.InviteToken}",
+                    plan.InviteCanEdit
+                );
+            }
+        }
+
         var orderedDays = plan.Days.OrderBy(d => Array.IndexOf(WeekDays, d.Day)).ToList();
         return new MealPlanResponse(
             plan.Id,
@@ -117,6 +160,11 @@ public class MealPlanService(AppDbContext db)
             plan.DailyCarbs,
             plan.DailyFat,
             plan.Id == mainPlanId,
+            role,
+            canEdit,
+            ownerName,
+            sharedWith,
+            activeInvite,
             plan.Slots.OrderBy(s => s.SortOrder).Select(s => new MealSlotResponse(s.Id, s.Name, s.Time, s.SortOrder)).ToList(),
             orderedDays.Select(d => new DayPlanResponse(
                 d.Day,
@@ -136,5 +184,12 @@ public class MealPlanService(AppDbContext db)
             plan.CreatedAt,
             plan.UpdatedAt
         );
+    }
+
+    public static void AssertEditAccess(MealPlan plan, Guid userId)
+    {
+        if (plan.UserId == userId) return;
+        if (plan.SharedWithUserId == userId && plan.CanEdit) return;
+        throw new ApiException("Acesso negado", 403);
     }
 }

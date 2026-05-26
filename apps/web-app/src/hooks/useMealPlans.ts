@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mealPlanService } from '@/services/mealPlanService';
+import { mealPlanShareService } from '@/services/mealPlanShareService';
 import { presetMealService } from '@/services/presetMealService';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Food, PlanGoal } from '@/types';
@@ -163,5 +164,51 @@ export function useMealPlan(id: string | undefined) {
       copyMealMut.mutateAsync({ sourceMealId, targetMealIds }),
     applyPreset: (presetId: string, targetMealIds: string[]) =>
       applyPresetMut.mutateAsync({ presetId, targetMealIds }),
+  };
+}
+
+export function useMealPlanSharing(planId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  const invalidate = () => {
+    if (!planId) return;
+    queryClient.invalidateQueries({ queryKey: mealPlanKeys.detail(planId) });
+    queryClient.invalidateQueries({ queryKey: mealPlanKeys.lists() });
+  };
+
+  const generateInvite = useMutation({
+    mutationFn: (canEdit: boolean) => mealPlanShareService.generateInvite(planId!, canEdit),
+    onSuccess: invalidate,
+  });
+
+  const revokeInvite = useMutation({
+    mutationFn: () => mealPlanShareService.revokeInvite(planId!),
+    onSuccess: invalidate,
+  });
+
+  const updatePermission = useMutation({
+    mutationFn: (canEdit: boolean) => mealPlanShareService.updatePermission(planId!, canEdit),
+    onSuccess: invalidate,
+  });
+
+  const removeSharedUser = useMutation({
+    mutationFn: () => mealPlanShareService.removeSharedUser(planId!),
+    onSuccess: invalidate,
+  });
+
+  const leaveShare = useMutation({
+    mutationFn: () => mealPlanShareService.leaveShare(planId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mealPlanKeys.all });
+    },
+  });
+
+  return {
+    generateInvite: generateInvite.mutateAsync,
+    revokeInvite: revokeInvite.mutateAsync,
+    updatePermission: updatePermission.mutateAsync,
+    removeSharedUser: removeSharedUser.mutateAsync,
+    leaveShare: leaveShare.mutateAsync,
+    isGenerating: generateInvite.isPending,
   };
 }

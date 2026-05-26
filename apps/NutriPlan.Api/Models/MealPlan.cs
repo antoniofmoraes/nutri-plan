@@ -41,6 +41,27 @@ public class MealPlan
     [JsonIgnore]
     public User User { get; set; } = null!;
 
+    [Column("sharedWithUserId")]
+    public Guid? SharedWithUserId { get; set; }
+
+    [JsonIgnore]
+    public User? SharedWithUser { get; set; }
+
+    [Column("canEdit")]
+    public bool CanEdit { get; set; } = false;
+
+    [Column("sharedAt")]
+    public DateTime? SharedAt { get; set; }
+
+    [Column("inviteToken")]
+    public string? InviteToken { get; set; }
+
+    [Column("inviteCanEdit")]
+    public bool InviteCanEdit { get; set; } = false;
+
+    [Column("inviteExpiresAt")]
+    public DateTime? InviteExpiresAt { get; set; }
+
     public ICollection<DayPlan> Days { get; set; } = [];
     public ICollection<MealSlot> Slots { get; set; } = [];
 }

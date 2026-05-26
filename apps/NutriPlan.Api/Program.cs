@@ -153,6 +153,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<FoodService>();
 builder.Services.AddScoped<MealPlanService>();
+builder.Services.AddScoped<MealPlanShareService>();
 builder.Services.AddScoped<MealSlotService>();
 builder.Services.AddScoped<MealService>();
 builder.Services.AddScoped<MealFoodService>();
@@ -304,6 +305,46 @@ mealPlans.MapDelete("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Gu
     return Results.Json(new ApiResponse(true, Message: "Refeição excluída com sucesso"));
 });
 
+// ─── Plan Sharing ────────────────────────────────────────
+mealPlans.MapPost("/{planId:guid}/sharing/invite", async (Guid planId, HttpContext ctx, CreateInviteRequest request, MealPlanShareService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GenerateInviteAsync(planId, GetUserId(ctx), request.CanEdit)), statusCode: 201));
+
+mealPlans.MapDelete("/{planId:guid}/sharing/invite", async (Guid planId, HttpContext ctx, MealPlanShareService svc) =>
+{
+    await svc.RevokeInviteAsync(planId, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Convite revogado"));
+});
+
+mealPlans.MapPatch("/{planId:guid}/sharing/permission", async (Guid planId, HttpContext ctx, UpdateSharePermissionRequest request, MealPlanShareService svc) =>
+{
+    await svc.UpdateSharePermissionAsync(planId, GetUserId(ctx), request.CanEdit);
+    return Results.Json(new ApiResponse(true, Message: "Permissão atualizada"));
+});
+
+mealPlans.MapDelete("/{planId:guid}/sharing/shared-user", async (Guid planId, HttpContext ctx, MealPlanShareService svc) =>
+{
+    await svc.RemoveShareAsync(planId, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Compartilhamento removido"));
+});
+
+mealPlans.MapDelete("/{planId:guid}/sharing/leave", async (Guid planId, HttpContext ctx, MealPlanShareService svc) =>
+{
+    await svc.LeaveShareAsync(planId, GetUserId(ctx));
+    return Results.Json(new ApiResponse(true, Message: "Você saiu do plano"));
+});
+
+// ─── Plan Invites (standalone) ───────────────────────────
+var invites = app.MapGroup("/api/invites").RequireAuthorization();
+
+invites.MapGet("/{token}", async (string token, MealPlanShareService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetInviteInfoAsync(token))));
+
+invites.MapPost("/{token}/accept", async (string token, HttpContext ctx, MealPlanShareService svc) =>
+{
+    var planId = await svc.AcceptInviteAsync(token, GetUserId(ctx));
+    return Results.Json(ApiResponses.Ok(new { planId }), statusCode: 201);
+});
+
 // ─── Meals (read-only, per day) ──────────────────────────
 mealPlans.MapGet("/{planId:guid}/days/{day}/meals", async (Guid planId, string day, HttpContext ctx, MealService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMealsForDayAsync(planId, day, GetUserId(ctx)))));
@@ -397,6 +438,9 @@ presetMeals.MapPost("/", async (HttpContext ctx, CreatePresetMealRequest request
 
 presetMeals.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdatePresetMealRequest request, PresetMealService svc) =>
     Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request))));
+
+presetMeals.MapPost("/{id:guid}/duplicate", async (Guid id, HttpContext ctx, PresetMealService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.DuplicateAsync(id, GetUserId(ctx))), statusCode: 201));
 
 presetMeals.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc) =>
 {

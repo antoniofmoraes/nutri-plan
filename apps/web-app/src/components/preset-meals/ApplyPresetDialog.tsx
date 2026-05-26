@@ -4,8 +4,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   DialogBody, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { weekDays } from '@/lib/constants';
+import { MealSlotGrid } from '@/components/shared/MealSlotGrid';
 import type { MealPlan } from '@/types';
 
 interface ApplyPresetDialogProps {
@@ -55,9 +54,19 @@ export function ApplyPresetDialog({
   };
 
   const selectedPlan = mealPlans.find(p => p.id === selectedPlanId);
-  const orderedSlots = selectedPlan
-    ? [...selectedPlan.slots].sort((a, b) => a.sortOrder - b.sortOrder)
+
+  const allMealIds = selectedPlan
+    ? selectedPlan.days.flatMap(d => d.meals.map(m => m.id))
     : [];
+  const allSelected = allMealIds.length > 0 && allMealIds.every(id => selectedMealIds.has(id));
+
+  const toggleAll = () => {
+    setSelectedMealIds(prev => {
+      const next = new Set(prev);
+      allMealIds.forEach(id => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -83,77 +92,15 @@ export function ApplyPresetDialog({
             </select>
           </div>
 
-          {selectedPlan && orderedSlots.length > 0 && (
-            <>
-              {/* Mobile */}
-              <div className="space-y-3 md:hidden">
-                {orderedSlots.map(slot => (
-                  <div key={slot.id} className="rounded-[var(--r-md)] border border-line p-3">
-                    <p className="text-[13px] font-semibold mb-2">{slot.name}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {weekDays.map(day => {
-                        const dayPlan = selectedPlan.days.find(d => d.day === day.value);
-                        const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
-                        if (!meal) {
-                          return (
-                            <div key={day.value} className="flex items-center gap-2 px-2 py-2 text-[12.5px] text-muted">
-                              <span className="w-10">{day.short}</span>
-                              <span>—</span>
-                            </div>
-                          );
-                        }
-                        return (
-                          <label
-                            key={day.value}
-                            className="flex items-center gap-2 rounded-[var(--r-sm)] border border-line px-2 py-2 text-[12.5px] cursor-pointer hover:bg-surface-alt min-h-[44px] transition-[background] duration-[120ms]"
-                          >
-                            <Checkbox
-                              checked={selectedMealIds.has(meal.id)}
-                              onCheckedChange={() => toggleMealId(meal.id)}
-                            />
-                            <span>{day.short}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop */}
-              <div className="hidden md:block overflow-x-auto border border-line rounded-[var(--r-md)]">
-                <table className="w-full border-collapse text-[12.5px]">
-                  <thead>
-                    <tr className="border-b border-line bg-surface-alt">
-                      <th className="p-2.5 text-left eyebrow">Refeição</th>
-                      {weekDays.map(d => (
-                        <th key={d.value} className="p-2.5 text-center eyebrow">{d.short}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderedSlots.map(slot => (
-                      <tr key={slot.id} className="border-b border-line last:border-b-0">
-                        <td className="p-2.5 font-medium whitespace-nowrap">{slot.name}</td>
-                        {weekDays.map(day => {
-                          const dayPlan = selectedPlan.days.find(d => d.day === day.value);
-                          const meal = dayPlan?.meals.find(m => m.slotId === slot.id);
-                          if (!meal) return <td key={day.value} className="p-2.5 text-center"><span className="text-muted">—</span></td>;
-                          return (
-                            <td key={day.value} className="p-2.5 text-center">
-                              <Checkbox
-                                checked={selectedMealIds.has(meal.id)}
-                                onCheckedChange={() => toggleMealId(meal.id)}
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+          {selectedPlan && selectedPlan.slots.length > 0 && (
+            <MealSlotGrid
+              plan={selectedPlan}
+              selectedMealIds={selectedMealIds}
+              onToggleMeal={toggleMealId}
+              showSelectAll
+              onToggleAll={toggleAll}
+              allSelected={allSelected}
+            />
           )}
         </DialogBody>
 

@@ -46,6 +46,11 @@ export const presetMealService = {
     return transform(item);
   },
 
+  async duplicate(id: string): Promise<PresetMeal> {
+    const item = await api.post<ApiPresetMeal>(`/api/preset-meals/${id}/duplicate`, {});
+    return transform(item);
+  },
+
   async delete(id: string): Promise<void> {
     await api.delete(`/api/preset-meals/${id}`);
   },

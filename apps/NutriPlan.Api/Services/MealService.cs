@@ -38,7 +38,7 @@ public class MealService(AppDbContext db)
 
         if (source is null)
             throw new ApiException("Refeição de origem não encontrada", 404);
-        source.AssertOwnership(userId);
+        source.AssertEditAccess(userId);
 
         var targets = await db.Meals
             .WithOwnership()
@@ -50,7 +50,7 @@ public class MealService(AppDbContext db)
 
         foreach (var target in targets)
         {
-            target.AssertOwnership(userId);
+            target.AssertEditAccess(userId);
             if (target.MealSlotId != source.MealSlotId)
                 throw new ApiException("Só é possível copiar entre o mesmo tipo de refeição", 400);
             if (target.Id == source.Id)
@@ -72,7 +72,7 @@ public class MealService(AppDbContext db)
 
         if (meal is null)
             throw new ApiException("Refeição não encontrada", 404);
-        meal.AssertOwnership(userId);
+        meal.AssertEditAccess(userId);
 
         if (isCheat)
         {
@@ -95,14 +95,14 @@ public class MealService(AppDbContext db)
 
     private async Task EnsurePlanAccess(Guid planId, Guid userId)
     {
-        var ownerId = await db.MealPlans
+        var plan = await db.MealPlans
             .Where(mp => mp.Id == planId)
-            .Select(mp => (Guid?)mp.UserId)
+            .Select(mp => new { mp.UserId, mp.SharedWithUserId })
             .FirstOrDefaultAsync();
 
-        if (ownerId is null)
+        if (plan is null)
             throw new ApiException("Plano alimentar não encontrado", 404);
-        if (ownerId != userId)
+        if (plan.UserId != userId && plan.SharedWithUserId != userId)
             throw new ApiException("Acesso negado", 403);
     }
 

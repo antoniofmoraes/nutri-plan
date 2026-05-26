@@ -6,10 +6,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   DialogBody, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useMealPlans } from '@/hooks/useMealPlans';
+import { MealSlotGrid } from '@/components/shared/MealSlotGrid';
 import { ShoppingList } from '@/types';
-import { weekDays } from '@/lib/constants';
 import { shoppingListService } from '@/services/shoppingListService';
 import { toast } from 'sonner';
 
@@ -110,6 +109,16 @@ export default function ShoppingListDetail() {
       const next = new Set(prev);
       if (next.has(mealId)) next.delete(mealId);
       else next.add(mealId);
+      return next;
+    });
+  };
+
+  const toggleAllPlanMeals = (plan: typeof mealPlans[number]) => {
+    const allMealIds = plan.days.flatMap(d => d.meals.map(m => m.id));
+    const allSelected = allMealIds.every(id => selectedMealIds.has(id));
+    setSelectedMealIds(prev => {
+      const next = new Set(prev);
+      allMealIds.forEach(id => allSelected ? next.delete(id) : next.add(id));
       return next;
     });
   };
@@ -253,7 +262,10 @@ export default function ShoppingListDetail() {
             ) : (
               mealPlans.map((plan) => {
                 const isExpanded = expandedPlans.has(plan.id);
-                const planMealCount = plan.days.reduce((sum, d) => sum + d.meals.filter(m => selectedMealIds.has(m.id)).length, 0);
+                const allMealIds = plan.days.flatMap(d => d.meals.map(m => m.id));
+                const planMealCount = allMealIds.filter(id => selectedMealIds.has(id)).length;
+                const allSelected = allMealIds.length > 0 && allMealIds.every(id => selectedMealIds.has(id));
+
                 return (
                   <div key={plan.id} className="border border-line rounded-[var(--r-md)] overflow-hidden">
                     <button
@@ -272,35 +284,15 @@ export default function ShoppingListDetail() {
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className="border-t border-line p-3 space-y-3">
-                        {weekDays.map((day) => {
-                          const dayPlan = plan.days.find(d => d.day === day.value);
-                          if (!dayPlan || dayPlan.meals.length === 0) return null;
-                          return (
-                            <div key={day.value}>
-                              <p className="eyebrow mb-1.5">{day.label}</p>
-                              <div className="space-y-0.5 pl-2">
-                                {dayPlan.meals.map((meal) => (
-                                  <label
-                                    key={meal.id}
-                                    className="flex items-center gap-2 text-[12.5px] cursor-pointer hover:bg-surface-alt rounded-[var(--r-sm)] px-2 py-2 min-h-[40px] transition-[background] duration-[120ms]"
-                                  >
-                                    <Checkbox
-                                      checked={selectedMealIds.has(meal.id)}
-                                      onCheckedChange={() => toggleMeal(meal.id)}
-                                    />
-                                    <span>{meal.name}</span>
-                                    {meal.foods.length > 0 && (
-                                      <span className="mono text-[10px] text-muted ml-auto">
-                                        {meal.foods.length} {meal.foods.length === 1 ? 'item' : 'itens'}
-                                      </span>
-                                    )}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="border-t border-line p-3">
+                        <MealSlotGrid
+                          plan={plan}
+                          selectedMealIds={selectedMealIds}
+                          onToggleMeal={toggleMeal}
+                          showSelectAll
+                          onToggleAll={() => toggleAllPlanMeals(plan)}
+                          allSelected={allSelected}
+                        />
                       </div>
                     )}
                   </div>

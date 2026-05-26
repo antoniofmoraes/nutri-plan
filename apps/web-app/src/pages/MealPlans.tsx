@@ -280,6 +280,17 @@ function PlanCard({
           )}
         </div>
         <h3 className="text-[18px] font-semibold tracking-[-0.01em] mb-1">{plan.name}</h3>
+        {plan.role === 'shared' && plan.ownerName && (
+          <div className="text-[11.5px] text-muted mb-0.5">
+            Compartilhado por <span className="font-medium text-foreground">{plan.ownerName}</span>
+            {!plan.canEdit && ' · Somente leitura'}
+          </div>
+        )}
+        {plan.role === 'owner' && plan.sharedWith && (
+          <div className="text-[11.5px] text-muted mb-0.5">
+            Compartilhado com <span className="font-medium text-foreground">{plan.sharedWith.userName}</span>
+          </div>
+        )}
         <div className="mono text-[11.5px] text-muted">
           ~{Math.round(macros.calories).toLocaleString("pt-BR")} kcal/dia · {plan.slots.length} refeições
         </div>
@@ -290,20 +301,22 @@ function PlanCard({
           <span>C · {Math.round(macros.carbs)}</span>
           <span>G · {Math.round(macros.fat)}</span>
         </div>
-        <div className="flex gap-1">
-          <button
-            className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-ink transition-[background,color] duration-[120ms]"
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          >
-            <Edit size={14} strokeWidth={1.6} />
-          </button>
-          <button
-            className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-danger transition-[background,color] duration-[120ms]"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          >
-            <Trash2 size={14} strokeWidth={1.6} />
-          </button>
-        </div>
+        {plan.role === 'owner' && (
+          <div className="flex gap-1">
+            <button
+              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-ink transition-[background,color] duration-[120ms]"
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            >
+              <Edit size={14} strokeWidth={1.6} />
+            </button>
+            <button
+              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-danger transition-[background,color] duration-[120ms]"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            >
+              <Trash2 size={14} strokeWidth={1.6} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

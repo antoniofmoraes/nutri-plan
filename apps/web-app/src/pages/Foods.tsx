@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useFoodMutations } from '@/hooks/useFoods';
 import { Food } from '@/types';
 import { foodService } from '@/services/foodService';
+import { useAuth } from '@/contexts/AuthContext';
 
 const foodSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -29,6 +30,8 @@ type FoodFormData = z.infer<typeof foodSchema>;
 const PAGE_SIZE = 50;
 
 export default function Foods() {
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
   const { createFood, updateFood, deleteFood } = useFoodMutations();
   const [foods, setFoods] = useState<Food[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,10 +148,12 @@ export default function Foods() {
             Gerencie sua base de alimentos com valores nutricionais por porção.
           </p>
         </div>
-        <Button variant="acc" onClick={handleOpenCreate}>
-          <Plus size={16} />
-          Novo alimento
-        </Button>
+        {isAdmin && (
+          <Button variant="acc" onClick={handleOpenCreate}>
+            <Plus size={16} />
+            Novo alimento
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -183,7 +188,7 @@ export default function Foods() {
               ? 'Tente buscar com outros termos'
               : 'Adicione alimentos para usar em suas refeições'}
           </p>
-          {!searchQuery && (
+          {!searchQuery && isAdmin && (
             <Button variant="acc" onClick={handleOpenCreate}>
               <Plus size={16} />
               Adicionar primeiro alimento
@@ -201,23 +206,25 @@ export default function Foods() {
                     <p className="font-semibold text-[14.5px] truncate">{food.name}</p>
                     <p className="mono text-[11px] text-muted mt-0.5">{food.portion}</p>
                   </div>
-                  <div className="flex gap-0.5 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenEdit(food)}
-                    >
-                      <Edit size={14} strokeWidth={1.6} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="hover:text-danger"
-                      onClick={() => handleDelete(food.id)}
-                    >
-                      <Trash2 size={14} strokeWidth={1.6} />
-                    </Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-0.5 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenEdit(food)}
+                      >
+                        <Edit size={14} strokeWidth={1.6} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:text-danger"
+                        onClick={() => handleDelete(food.id)}
+                      >
+                        <Trash2 size={14} strokeWidth={1.6} />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-1.5">
                   <div>
@@ -257,7 +264,7 @@ export default function Foods() {
                   <TableHead className="text-right">Gordura</TableHead>
                   <TableHead className="text-right">Fibras</TableHead>
                   <TableHead className="text-right">Porção</TableHead>
-                  <TableHead className="w-20"></TableHead>
+                  {isAdmin && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -285,16 +292,18 @@ export default function Foods() {
                     <TableCell className="text-right">
                       <span className="mono text-[11px] text-muted">{food.portion}</span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-0.5">
-                        <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(food)}>
-                          <Edit size={14} strokeWidth={1.6} />
-                        </Button>
-                        <Button variant="ghost" size="icon-xs" className="hover:text-danger" onClick={() => handleDelete(food.id)}>
-                          <Trash2 size={14} strokeWidth={1.6} />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-0.5">
+                          <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(food)}>
+                            <Edit size={14} strokeWidth={1.6} />
+                          </Button>
+                          <Button variant="ghost" size="icon-xs" className="hover:text-danger" onClick={() => handleDelete(food.id)}>
+                            <Trash2 size={14} strokeWidth={1.6} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

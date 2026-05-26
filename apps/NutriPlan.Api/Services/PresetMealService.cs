@@ -48,6 +48,33 @@ public class PresetMealService(AppDbContext db)
         return ToResponse(preset);
     }
 
+    public async Task<PresetMealResponse> DuplicateAsync(Guid id, Guid userId)
+    {
+        var source = await GetPresetWithOwnership(id, userId, includeFoods: true);
+
+        var copy = new PresetMeal
+        {
+            Name = $"{source.Name} (cópia)",
+            UserId = userId
+        };
+        db.PresetMeals.Add(copy);
+        await db.SaveChangesAsync();
+
+        foreach (var f in source.Foods)
+        {
+            db.PresetMealFoods.Add(new PresetMealFood
+            {
+                PresetMealId = copy.Id,
+                FoodId = f.FoodId,
+                Quantity = f.Quantity
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var result = await GetPresetsQuery().FirstAsync(pm => pm.Id == copy.Id);
+        return ToResponse(result);
+    }
+
     public async Task DeleteAsync(Guid id, Guid userId)
     {
         var preset = await GetPresetWithOwnership(id, userId);
@@ -140,7 +167,7 @@ public class PresetMealService(AppDbContext db)
 
         foreach (var target in targets)
         {
-            target.AssertOwnership(userId);
+            target.AssertEditAccess(userId);
             db.ReplaceFoods(target, items);
         }
 

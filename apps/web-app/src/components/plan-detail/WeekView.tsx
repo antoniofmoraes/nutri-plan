@@ -10,7 +10,7 @@ interface WeekViewProps extends ViewProps {
   onCopyMeal: (sourceMealId: string, targetMealIds: string[]) => void;
 }
 
-export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCheat, onCopyMeal, calculateDayMacros, calculateMealMacros }: WeekViewProps) {
+export function WeekView({ plan, readOnly, onDayClick, onAddFood, onRemoveFood, onToggleCheat, onCopyMeal, calculateDayMacros, calculateMealMacros }: WeekViewProps) {
   const orderedSlots = [...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
@@ -78,14 +78,16 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
                             <Badge variant="cheat" className="self-start text-[9px] px-1.5 py-0.5">
                               Livre
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              className="justify-start px-1 mt-auto text-[10px]"
-                              onClick={() => onToggleCheat(meal.id, true)}
-                            >
-                              Desmarcar
-                            </Button>
+                            {!readOnly && (
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                className="justify-start px-1 mt-auto text-[10px]"
+                                onClick={() => onToggleCheat(meal.id, true)}
+                              >
+                                Desmarcar
+                              </Button>
+                            )}
                           </>
                         ) : (
                           <>
@@ -99,45 +101,49 @@ export function WeekView({ plan, onDayClick, onAddFood, onRemoveFood, onToggleCh
                                       {food.name}{' '}
                                       <span className="mono text-muted">{quantity}g</span>
                                     </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => onRemoveFood(meal.id, food.id)}
-                                      className="opacity-0 group-hover:opacity-100 hover:text-danger flex-shrink-0 transition-opacity duration-[120ms]"
-                                    >
-                                      <X size={12} />
-                                    </button>
+                                    {!readOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onRemoveFood(meal.id, food.id)}
+                                        className="opacity-0 group-hover:opacity-100 hover:text-danger flex-shrink-0 transition-opacity duration-[120ms]"
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    )}
                                   </div>
                                 ))
                               )}
                             </div>
-                            <div className="flex gap-1 mt-auto">
-                              <Button
-                                variant="sec"
-                                size="xs"
-                                className="flex-1 px-1"
-                                onClick={() => onAddFood(meal.id)}
-                                title="Adicionar alimento"
-                              >
-                                <Plus size={12} />
-                              </Button>
-                              {meal.foods.length > 0 && (
-                                <CopyMealPopover
-                                  plan={plan}
-                                  meal={meal}
-                                  currentDay={day.value}
-                                  onCopy={(targetIds) => onCopyMeal(meal.id, targetIds)}
-                                />
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                className="px-1"
-                                onClick={() => onToggleCheat(meal.id, false)}
-                                title="Marcar como livre"
-                              >
-                                <Sparkles size={12} />
-                              </Button>
-                            </div>
+                            {!readOnly && (
+                              <div className="flex gap-1 mt-auto">
+                                <Button
+                                  variant="sec"
+                                  size="xs"
+                                  className="flex-1 px-1"
+                                  onClick={() => onAddFood(meal.id)}
+                                  title="Adicionar alimento"
+                                >
+                                  <Plus size={12} />
+                                </Button>
+                                {meal.foods.length > 0 && (
+                                  <CopyMealPopover
+                                    plan={plan}
+                                    meal={meal}
+                                    currentDay={day.value}
+                                    onCopy={(targetIds) => onCopyMeal(meal.id, targetIds)}
+                                  />
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  className="px-1"
+                                  onClick={() => onToggleCheat(meal.id, false)}
+                                  title="Marcar como livre"
+                                >
+                                  <Sparkles size={12} />
+                                </Button>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>

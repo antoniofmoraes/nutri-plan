@@ -28,6 +28,20 @@ interface ApiDayPlan {
   meals: ApiMeal[];
 }
 
+interface ApiShareInfo {
+  userId: string;
+  userName: string;
+  canEdit: boolean;
+  sharedAt: string;
+}
+
+interface ApiInviteInfo {
+  token: string;
+  expiresAt: string;
+  inviteUrl: string;
+  canEdit: boolean;
+}
+
 interface ApiMealPlan {
   id: string;
   name: string;
@@ -37,6 +51,11 @@ interface ApiMealPlan {
   dailyCarbs?: number | null;
   dailyFat?: number | null;
   isMain: boolean;
+  role: 'owner' | 'shared';
+  canEdit: boolean;
+  ownerName?: string | null;
+  sharedWith?: ApiShareInfo | null;
+  activeInvite?: ApiInviteInfo | null;
   slots: ApiMealSlot[];
   days: ApiDayPlan[];
   createdAt: string;
@@ -53,6 +72,17 @@ function transformMealPlan(apiPlan: ApiMealPlan): MealPlan {
     dailyCarbs: apiPlan.dailyCarbs,
     dailyFat: apiPlan.dailyFat,
     isMain: apiPlan.isMain,
+    role: apiPlan.role,
+    canEdit: apiPlan.canEdit,
+    ownerName: apiPlan.ownerName,
+    sharedWith: apiPlan.sharedWith ? {
+      ...apiPlan.sharedWith,
+      sharedAt: new Date(apiPlan.sharedWith.sharedAt),
+    } : null,
+    activeInvite: apiPlan.activeInvite ? {
+      ...apiPlan.activeInvite,
+      expiresAt: new Date(apiPlan.activeInvite.expiresAt),
+    } : null,
     slots: apiPlan.slots,
     days: apiPlan.days.map((day) => ({
       day: day.day,

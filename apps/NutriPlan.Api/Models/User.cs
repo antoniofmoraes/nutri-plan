@@ -37,5 +37,6 @@ public class User
     public MealPlan? MainMealPlan { get; set; }
 
     public ICollection<MealPlan> MealPlans { get; set; } = [];
+    public ICollection<MealPlan> SharedMealPlans { get; set; } = [];
     public ICollection<PresetMeal> PresetMeals { get; set; } = [];
 }

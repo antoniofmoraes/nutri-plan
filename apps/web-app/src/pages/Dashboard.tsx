@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, CalendarRange } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMealPlans } from '@/hooks/useMealPlans';
@@ -26,8 +26,15 @@ function getTodayIndex(): number {
 export default function Dashboard() {
   const { user } = useAuth();
   const { mealPlans } = useMealPlans();
-  const mainPlan = mealPlans.find(p => p.isMain);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(mainPlan?.id || mealPlans[0]?.id || '');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+
+  useEffect(() => {
+    if (mealPlans.length > 0 && !selectedPlanId) {
+      const main = mealPlans.find(p => p.isMain);
+      setSelectedPlanId(main?.id ?? mealPlans[0].id);
+    }
+  }, [mealPlans, selectedPlanId]);
+
   const [selectedDay, setSelectedDay] = useState<WeekDay>(getTodayWeekDay());
 
   const selectedPlan = mealPlans.find(p => p.id === selectedPlanId);

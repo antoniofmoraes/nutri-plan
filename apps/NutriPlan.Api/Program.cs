@@ -159,6 +159,7 @@ builder.Services.AddScoped<MealService>();
 builder.Services.AddScoped<MealFoodService>();
 builder.Services.AddScoped<ShoppingListService>();
 builder.Services.AddScoped<PresetMealService>();
+builder.Services.AddScoped<MealPlanExportService>();
 
 // JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -284,6 +285,29 @@ mealPlans.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, MealPlanServi
 {
     await svc.DeleteAsync(id, GetUserId(ctx));
     return Results.Json(new ApiResponse(true, Message: "Plano alimentar excluído com sucesso"));
+});
+
+mealPlans.MapGet("/{id:guid}/export", async (Guid id, HttpContext ctx, string? format, MealPlanService planSvc, MealPlanExportService exportSvc) =>
+{
+    var plan = await planSvc.GetByIdAsync(id, GetUserId(ctx));
+    var safeName = string.Concat(plan.Name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+    if (string.IsNullOrWhiteSpace(safeName)) safeName = "plano";
+
+    return (format?.ToLower() ?? "md") switch
+    {
+        "docx" => Results.File(
+            exportSvc.GenerateDocx(plan),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            $"{safeName}.docx"),
+        "pdf" => Results.File(
+            exportSvc.GeneratePdf(plan),
+            "application/pdf",
+            $"{safeName}.pdf"),
+        _ => Results.File(
+            Encoding.UTF8.GetBytes(exportSvc.GenerateMarkdown(plan)),
+            "text/markdown; charset=utf-8",
+            $"{safeName}.md")
+    };
 });
 
 // ─── Meal Slots (plan-level meal templates) ──────────────

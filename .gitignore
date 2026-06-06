@@ -69,6 +69,17 @@ obj/
 .vs/
 appsettings.Development.json
 
+# Capacitor / Android
+apps/web-app/android/.gradle/
+apps/web-app/android/app/build/
+apps/web-app/android/build/
+apps/web-app/android/local.properties
+apps/web-app/android/app/release.jks
+# Capacitor / iOS
+apps/web-app/ios/App/Pods/
+apps/web-app/ios/App/DerivedData/
+apps/web-app/ios/App/*.xcworkspace/xcuserdata/
+
 # Docker
 .docker/
 

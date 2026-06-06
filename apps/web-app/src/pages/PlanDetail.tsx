@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Star, CalendarRange, LogOut } from 'lucide-react';
+import { Star, CalendarRange, LogOut, Download, FileText, FileType, FileCode, Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { mealPlanService } from '@/services/mealPlanService';
 import { useMealPlan, useMealPlanSharing } from '@/hooks/useMealPlans';
 import { useAllFoods } from '@/hooks/useFoods';
 import { usePresetMeals } from '@/hooks/usePresetMeals';
@@ -128,6 +130,23 @@ export default function PlanDetail() {
     setViewMode('day');
   };
 
+  const handleExport = async (format: 'md' | 'docx' | 'pdf') => {
+    try {
+      await mealPlanService.downloadExport(plan.id, plan.name, format);
+    } catch {
+      toast.error('Erro ao exportar plano');
+    }
+  };
+
+  const handleCopyMarkdown = async () => {
+    try {
+      await mealPlanService.copyMarkdownExport(plan.id);
+      toast.success('Markdown copiado para a área de transferência');
+    } catch {
+      toast.error('Erro ao copiar markdown');
+    }
+  };
+
   return (
     <div className="space-y-7">
       {/* Header */}
@@ -189,6 +208,33 @@ export default function PlanDetail() {
               </button>
             </div>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="sec" size="sm">
+                <Download size={14} />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleCopyMarkdown}>
+                <Clipboard size={14} className="mr-2" />
+                Copiar Markdown
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport('md')}>
+                <FileCode size={14} className="mr-2" />
+                Baixar Markdown (.md)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('docx')}>
+                <FileText size={14} className="mr-2" />
+                Word (.docx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileType size={14} className="mr-2" />
+                PDF (.pdf)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isOwner && <ShareDialog plan={plan} />}
           {canEditPlan && (
             <Button variant="sec" onClick={() => setSlotsManagerOpen(true)}>

@@ -38,6 +38,7 @@ docs/
 | Notificações | sonner (`toast`) — preferir sobre o `useToast` do shadcn                       |
 | Banco        | PostgreSQL (Supabase ou similar); migrations automáticas no startup            |
 | Infra        | Docker multi-stage; nginx serve o frontend e proxy `/api` → api:3000           |
+| Mobile       | Capacitor 7 — wraps o web-app em APK/IPA nativo; Android + iOS                |
 
 ---
 
@@ -212,12 +213,41 @@ Prioridade central deste projeto. Toda nova UI deve passar nos dois cenários **
 - [ ] Loading e empty states implementados.
 - [ ] Tokens semânticos (sem cores cruas).
 
-### 6.4 PWA / instalável (futuro próximo)
+### 6.4 Mobile nativo — Capacitor
 
-Não há manifest/SW ainda. Quando for implementar:
-- Adicionar `vite-plugin-pwa` (não outro).
-- Manifest com cores extraídas dos tokens (`--primary`, `--background`).
-- Estratégia: `NetworkFirst` para `/api`, `CacheFirst` para assets.
+Estratégia escolhida: **Capacitor** wrapa o web-app existente em shell nativo (Android APK/AAB + iOS IPA), sem reescrever componentes. Fluxo:
+
+```
+npm run build  →  npx cap sync  →  Gradle (Android) / Xcode (iOS)
+```
+
+**Setup (uma vez por plataforma):**
+```bash
+# na pasta apps/web-app
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
+npx cap init NutriPlan com.nutriplan.app --web-dir dist
+npx cap add android
+npx cap add ios          # requer macOS
+```
+
+**Arquivos-chave:**
+- `apps/web-app/capacitor.config.ts` — configuração do app (appId, server URL).
+- `apps/web-app/android/` — projeto Gradle gerado; **não editar manualmente** exceto `app/src/main/res/` (ícones, splash).
+- `apps/web-app/ios/` — projeto Xcode gerado; mesma regra.
+
+**Fluxo de desenvolvimento:**
+```bash
+npm run build && npx cap sync android   # atualiza WebView com o build mais recente
+npx cap open android                    # abre Android Studio (só para debug/emulador)
+npx cap open ios                        # abre Xcode
+```
+
+**Regras:**
+- O `capacitor.config.ts` define `server.url` em dev (aponta para a API local). Em produção, remover `server` para usar o bundle estático.
+- Plugins nativos (`@capacitor/push-notifications`, `@capacitor/camera`, etc.): só adicionar quando houver requisito real — cada plugin aumenta o APK.
+- **Não commitar** `android/` e `ios/` inteiros — apenas `capacitor.config.ts` e os arquivos customizados (`res/`, `Info.plist`). Deixar no `.gitignore` o que o Gradle/Xcode gera (`.gradle/`, `build/`, `Pods/`, etc.).
+
+**PWA (complementar):** Quando implementar, usar `vite-plugin-pwa`. Estratégia: `NetworkFirst` para `/api`, `CacheFirst` para assets. Não substitui o Capacitor — serve para usuários que não instalam o app nativo.
 
 ---
 
@@ -250,6 +280,13 @@ npm test                                # vitest run
 
 # Full stack (raiz)
 docker compose -f docker-compose.local.yml up --build --watch
+
+# Mobile — Capacitor (na pasta apps/web-app)
+npm run build && npx cap sync android   # sincroniza build → Android
+npm run build && npx cap sync ios       # sincroniza build → iOS (requer macOS)
+npx cap open android                    # abre Android Studio
+npx cap open ios                        # abre Xcode
+npx cap run android                     # roda em dispositivo/emulador conectado
 ```
 
 ---
@@ -327,7 +364,28 @@ Notas:
 - Coolify segue independente — CI valida; Coolify deploya. Não tentar deploy via Actions sem motivo.
 - Para preview environments: Coolify suporta — configurar por branch quando o projeto crescer.
 
-### 9.3 Branches
+### 9.3 Pipeline de mobile (Capacitor)
+
+CI vive em `.github/workflows/mobile.yml`. Separado do `ci.yml` porque só roda em push para `main` ou manualmente — não bloqueia PRs.
+
+**Android** (`ubuntu-latest`, gratuito):
+- Build web → `cap sync` → `./gradlew bundleRelease` (AAB para Play Store) ou `assembleDebug` (APK de teste).
+- Signing para release: secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+- Artifact: APK/AAB enviado como `actions/upload-artifact`.
+
+**iOS** (`macos-latest`, ~10× mais caro em minutos):
+- Requer Apple Developer Program ativo.
+- Usar **fastlane match** para gerenciar certificados/provisioning profiles via Git (repo privado de certs).
+- Build: `xcodebuild archive` + `xcodebuild -exportArchive` → `.ipa`.
+- Secrets: `MATCH_PASSWORD`, `APPLE_ID`, `APP_STORE_CONNECT_API_KEY_*`.
+- **Recomendação**: implementar iOS CI quando o app estiver próximo de submissão à App Store; até lá, build local via Xcode.
+
+**Diretivas:**
+- Não rodar mobile CI em PRs — é lento e não bloqueia nada funcional.
+- AAB de release só é gerado em push para `main` (com secrets de signing configurados).
+- Debug APK pode ser gerado sempre — útil para distribuição interna via Firebase App Distribution ou similar.
+
+### 9.5 Branches
 
 - `main` → produção (Coolify aponta aqui).
 - `dev` → branch de integração diária (branch atual de trabalho).

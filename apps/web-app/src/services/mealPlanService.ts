@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, getToken } from '@/lib/api';
 import { MealPlan, MealSlot, WeekDay, Food } from '@/types';
 
 interface ApiMealFood {
@@ -202,5 +202,34 @@ export const mealPlanService = {
 
   async updateMealFood(mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }): Promise<void> {
     await api.patch(`/api/meals/${mealId}/foods/${foodId}`, updates);
+  },
+
+  async copyMarkdownExport(planId: string): Promise<void> {
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const token = getToken();
+    const response = await fetch(`${apiUrl}/api/meal-plans/${planId}/export?format=md`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) throw new Error('Erro ao exportar plano');
+    const text = await response.text();
+    await navigator.clipboard.writeText(text);
+  },
+
+  async downloadExport(planId: string, planName: string, format: 'md' | 'docx' | 'pdf'): Promise<void> {
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const token = getToken();
+    const response = await fetch(`${apiUrl}/api/meal-plans/${planId}/export?format=${format}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) throw new Error('Erro ao exportar plano');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${planName}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };

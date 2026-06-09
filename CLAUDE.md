@@ -369,7 +369,7 @@ Notas:
 CI vive em `.github/workflows/mobile.yml`. Separado do `ci.yml` porque só roda em push para `main` ou manualmente — não bloqueia PRs.
 
 **Android** (`ubuntu-latest`, gratuito):
-- Build web → `cap sync` → `./gradlew bundleRelease` (AAB para Play Store) ou `assembleDebug` (APK de teste).
+- Build web → `cap sync android` → `./gradlew bundleRelease` (AAB para Play Store) ou `assembleDebug` (APK de teste).
 - Signing para release: secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 - Artifact: APK/AAB enviado como `actions/upload-artifact`.
 

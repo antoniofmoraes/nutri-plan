@@ -90,14 +90,25 @@ public class PresetMealService(AppDbContext db)
         if (food is null)
             throw new ApiException("Alimento não encontrado", 404);
 
-        var entry = new PresetMealFood
-        {
-            PresetMealId = presetId,
-            FoodId = request.FoodId,
-            Quantity = request.Quantity
-        };
+        // Upsert: (PresetMealId, FoodId) é único — repetir o alimento atualiza a quantidade
+        var entry = await db.PresetMealFoods
+            .FirstOrDefaultAsync(pmf => pmf.PresetMealId == presetId && pmf.FoodId == request.FoodId);
 
-        db.PresetMealFoods.Add(entry);
+        if (entry is null)
+        {
+            entry = new PresetMealFood
+            {
+                PresetMealId = presetId,
+                FoodId = request.FoodId,
+                Quantity = request.Quantity
+            };
+            db.PresetMealFoods.Add(entry);
+        }
+        else
+        {
+            entry.Quantity = request.Quantity;
+        }
+
         await db.SaveChangesAsync();
 
         return new PresetMealFoodResponse(
@@ -122,6 +133,12 @@ public class PresetMealService(AppDbContext db)
             var newFood = await db.Foods.FindAsync(newFoodId.Value);
             if (newFood is null)
                 throw new ApiException("Novo alimento não encontrado", 404);
+
+            var duplicate = await db.PresetMealFoods
+                .AnyAsync(pmf => pmf.PresetMealId == presetId && pmf.FoodId == newFoodId.Value);
+            if (duplicate)
+                throw new ApiException("Esse alimento já está na refeição pronta", 409);
+
             entry.FoodId = newFoodId.Value;
             entry.Food = newFood;
         }

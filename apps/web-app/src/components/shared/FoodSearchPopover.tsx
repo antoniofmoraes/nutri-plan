@@ -62,7 +62,7 @@ export function FoodSearchPopover({
                 key={food.id}
                 type="button"
                 onClick={() => onSelect(food.id)}
-                className={`w-full text-left px-3 py-2 text-[12.5px] hover:bg-surface-alt border-b border-line last:border-b-0 transition-[background] duration-[120ms] ${
+                className={`w-full text-left px-3 py-2 text-[12.5px] hover:bg-surface-alt border-b border-line last:border-b-0 transition-[background] duration-120 ${
                   selectedFoodId === food.id ? 'bg-surface-alt' : ''
                 }`}
               >

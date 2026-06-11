@@ -30,15 +30,15 @@ docs/
 | Camada       | Escolhas                                                                       |
 | ------------ | ------------------------------------------------------------------------------ |
 | Backend      | .NET 10, Minimal APIs (sem MVC Controllers), EF Core + Npgsql, JWT + BCrypt    |
-| Frontend     | React 18, Vite + SWC, TypeScript estrito, React Router v6                      |
-| UI           | shadcn/ui (Radix), Tailwind 3 com CSS variables HSL, lucide-react              |
-| Estado       | Context API + `useState` para domínio; TanStack Query disponível mas opcional  |
+| Frontend     | React 18, Vite + SWC, TypeScript estrito, React Router v6 (rotas lazy)         |
+| UI           | shadcn/ui (Radix), Tailwind 3 com tokens PORTIO (CSS variables), lucide-react  |
+| Estado       | TanStack Query (hooks por domínio em `hooks/`); Context apenas para auth       |
 | Forms        | react-hook-form + zod                                                          |
 | Datas        | date-fns                                                                       |
 | Notificações | sonner (`toast`) — preferir sobre o `useToast` do shadcn                       |
 | Banco        | PostgreSQL (Supabase ou similar); migrations automáticas no startup            |
 | Infra        | Docker multi-stage; nginx serve o frontend e proxy `/api` → api:3000           |
-| Mobile       | Capacitor 7 — wraps o web-app em APK/IPA nativo; Android + iOS                |
+| Mobile       | Capacitor 8 — wraps o web-app em APK/IPA nativo; Android + iOS                |
 
 ---
 
@@ -82,7 +82,7 @@ docs/
 5. `Services/FooService.cs` — primary constructor + métodos `async`.
 6. Registre em `Program.cs` (`AddScoped<FooService>()`).
 7. `MapGroup("/api/foos").RequireAuthorization()` + endpoints CRUD.
-8. No frontend: `services/fooService.ts` + adicione no `MealPlanContext` (ou crie context próprio se for domínio independente).
+8. No frontend: `services/fooService.ts` + hook TanStack Query em `hooks/useFoos.ts` com query keys (ver `useMealPlans` como referência).
 
 ---
 
@@ -94,27 +94,29 @@ docs/
 src/
   components/
     ui/          → shadcn/ui (não editar manualmente — usar `npx shadcn add`)
-    layout/      → MainLayout, Sidebar
-    dashboard/   → componentes específicos de feature
-  contexts/      → estado de domínio (Auth, MealPlan)
-  hooks/         → hooks customizados (use-mobile, use-toast)
-  lib/           → api client, utils (cn, etc.)
-  pages/         → uma página por rota (App.tsx amarra tudo)
+    layout/      → MainLayout, Sidebar, AuthShell
+    shared/      → EmptyState, LoadingState, ConfirmDialog, FoodSearchPopover, MealSlotGrid
+    <feature>/   → componentes por feature (dashboard/, plan-detail/, preset-meals/, ...)
+  contexts/      → AuthContext (sessão/usuário)
+  hooks/         → TanStack Query por domínio (useMealPlans, useFoods, usePresetMeals) + use-mobile
+  lib/           → api client, macros, utils (cn, etc.)
+  pages/         → uma página por rota (App.tsx amarra tudo, com React.lazy)
   services/      → wrappers de API por recurso
   types/         → tipos compartilhados de domínio
 ```
 
 - **Alias `@/`** está configurado (`vite.config.ts` + `tsconfig`). Use sempre `@/components/...`, nunca caminhos relativos longos.
 - **Componentes de feature**: agrupe em subpasta de `components/<feature>/`. Quando um componente passa de ~200 linhas ou é reutilizado, **extraia**.
-- **Páginas grandes** (PlanDetail, PresetMeals — hoje 20k+) **devem ser quebradas** ao tocá-las. Aceitável >300 linhas; alarme >500.
+- **Páginas**: aceitável >300 linhas; alarme >500 — quebre em componentes de feature ao tocá-las.
+- **Rotas são lazy** (`React.lazy` em `App.tsx`) — páginas novas entram como `lazy(() => import(...))` para manter o code-splitting.
 
 ### 4.2 Comunicação com API
 
 - Use **`api.get/post/patch/delete`** de `@/lib/api.ts`. Ele já cuida de JWT, envelope `ApiResponse`, e converte erro em `ApiError` com `statusCode` e `details`.
 - **Camada `services/`** transforma `ApiX` (formato wire) → tipos de domínio (`@/types`). Não faça `fetch` direto na página.
 - **Estado de servidor**:
-  - **Default atual**: `MealPlanContext` carrega tudo em memória e expõe operações. Mantenha esse padrão para o domínio existente.
-  - **Para novos recursos com paginação/cache não trivial**: use **TanStack Query** (já está no provider, é só usar). Não misture os dois para o mesmo recurso.
+  - **Default**: TanStack Query via hooks por domínio em `hooks/` (`useMealPlans`, `useFoods`, `usePresetMeals`). Query keys centralizadas no próprio hook (ex.: `mealPlanKeys`); mutações invalidam via `queryClient.invalidateQueries`.
+  - Casos pontuais simples (ex.: ShoppingLists) usam `useState` + service direto na página — aceitável, mas ao crescer migre para um hook Query.
 - **Erros**: capture `ApiError` e mostre via `toast.error(err.message)`. Nunca renderize erro técnico cru ao usuário.
 
 ### 4.3 Forms
@@ -123,48 +125,55 @@ src/
 - Schemas zod em PT-BR nas mensagens (`z.string().min(1, "Nome obrigatório")`).
 - Use os componentes `<Form>...<FormField>` do shadcn — eles já integram com hook-form.
 
-### 4.4 Loading & Empty states
+### 4.4 Loading, Empty states e confirmações
 
-- **Não retorne `null`** silencioso enquanto carrega. Use skeleton do shadcn (`@/components/ui/skeleton`) ou um spinner discreto.
-- **Sempre forneça empty state** com call-to-action (ver Dashboard "Nenhum plano alimentar" como referência). Padrão visual: card centralizado + ícone em círculo `bg-primary/10` + título + descrição + botão.
+- **Não retorne `null`** silencioso enquanto carrega. Use `<LoadingState label="Carregando…" />` de `@/components/shared/LoadingState` (spinner + gerúndio). **Skeleton screens são banidos** pelos guard-rails do PORTIO.
+- **Sempre forneça empty state** com call-to-action via `<EmptyState icon={...} title="..." description="..." action={<Button/>} />` de `@/components/shared/EmptyState`.
+- **Ações destrutivas** confirmam via `<ConfirmDialog />` de `@/components/shared/ConfirmDialog` — nunca `window.confirm`/`alert`.
 
 ---
 
-## 5. Design system
+## 5. Design system — PORTIO
+
+> Detalhes completos em `docs/ai-specs/design-tokens.md`. Guard-rails em `docs/ai-specs/guard-rails.md` — **leia antes de qualquer UI**.
 
 ### 5.1 Tokens (NÃO use cores hex/Tailwind crus)
 
-Todas as cores estão em `src/index.css` como **CSS variables HSL** e expostas via `tailwind.config.ts`. **Sempre** use os tokens semânticos:
+Todas as cores estão em `src/index.css` como **CSS variables** (paleta PORTIO) expostas via `tailwind.config.ts`. **Sempre** use os tokens semânticos:
 
-| Categoria   | Tokens                                                                       |
-| ----------- | ---------------------------------------------------------------------------- |
-| Superfícies | `bg-background`, `bg-card`, `bg-popover`, `bg-muted`, `bg-sidebar`           |
-| Texto       | `text-foreground`, `text-muted-foreground`, `text-card-foreground`           |
-| Ações       | `bg-primary`, `bg-accent`, `bg-destructive` (sempre com `*-foreground` par)  |
-| Status      | `text-success`, `text-warning`, `text-info`, `text-destructive`              |
-| Macros      | `text-protein`, `text-carbs`, `text-fat` (e `bg-*` equivalentes)             |
-| Bordas      | `border-border`, `border-input`, `ring-ring`                                 |
-| Sombras     | `shadow-soft`, `shadow-medium`, `shadow-strong`, `shadow-glow`               |
+| Categoria        | Tokens                                                                  |
+| ---------------- | ----------------------------------------------------------------------- |
+| Superfícies      | `bg-bg` (fundo da página), `bg-paper`, `bg-surface`, `bg-surface-alt`, `bg-surface-2` |
+| Texto            | `text-ink`, `text-ink-2`, `text-muted`, `text-muted-2`                  |
+| Ação/marca       | `bg-accent text-accent-ink`, `bg-accent-soft text-accent`               |
+| Seleção ativa    | `bg-ink text-bg` (NUNCA accent — guard-rail)                            |
+| Status           | `text-good`, `text-warn`, `text-danger`                                 |
+| Macros (só data-viz) | `text-m-cal`, `text-m-pro`, `text-m-carb`, `text-m-fat`, `text-m-fib` — proibidos em UI chrome |
+| Bordas           | `border-line`, `border-line-2`                                          |
+| Sombras          | `shadow-1` (repouso), `shadow-2` (hover), `shadow-3` (modais)           |
+| Raios            | `rounded-sm` (6px), `rounded-md`/default (10px), `rounded-lg` (14px), `rounded-xl` (22px) |
 
-**Banido**: `bg-yellow-500`, `text-gray-600`, `border-slate-200` etc. Se faltar um tom, adicione um token novo em `index.css` + `tailwind.config.ts` em vez de hardcode.
+**Banido**: `bg-yellow-500`, `text-gray-600`, `border-slate-200` etc. Se faltar um tom, adicione um token novo em `index.css` + `tailwind.config.ts` em vez de hardcode. Os aliases shadcn (`bg-card`, `text-foreground`, ...) existem por compatibilidade nos componentes `ui/` — em código de app prefira os tokens PORTIO.
 
 ### 5.2 Tipografia
 
-- Body: `font-sans` (Inter, já default no body).
-- Títulos h1-h6: `font-display` (Nunito) — aplicado automaticamente no `index.css`. Em headings dentro de componentes, repita `font-display` se quiser garantir.
-- Escala recomendada: `text-3xl` (page title), `text-xl` (section title), `text-lg` (card title), `text-sm` (meta), `text-xs` (chips/labels).
+- Body: `font-sans` (Space Grotesk, default no body). Fontes carregadas via `<link>` no `index.html`.
+- **Todo número visível** usa mono tabular: classes utilitárias `.num` (tabular-nums) ou `.mono`.
+- Labels/microcopy técnico: `.eyebrow` (mono uppercase) e `.label-mono` (labels de form).
+- `font-serif` (Instrument Serif) **somente** na frase itálica das telas de auth.
+- Escala em uso: `text-[32px]` (page title), `text-[22px]` (section), `text-[18px]`/`text-[19px]` (card title), `text-[13px]`–`text-sm` (corpo/meta), `text-[11.5px]` mono (chips/meta).
 
 ### 5.3 Espaçamento, raios e elevação
 
-- **Raios**: use `rounded-lg` (padrão), `rounded-xl`, `rounded-2xl` para cards grandes. `rounded-full` para avatares/chips.
-- **Cards de conteúdo**: `rounded-2xl bg-card p-6 shadow-medium`.
-- **Container**: `MainLayout` já provê `container max-w-6xl`. Não envolva páginas em containers extras.
-- **Gap padrão de seção**: `space-y-6` ou `space-y-8`.
+- **Card padrão**: `bg-surface border border-line rounded-lg shadow-1` (+ `p-[22px]` em cards de conteúdo). Cards nunca coloridos — só o conteúdo interno.
+- **Hover de card**: `hover:shadow-2` (sem scale/zoom — guard-rail).
+- **Container**: `MainLayout` já provê `max-w-[1152px]`. Não envolva páginas em containers extras.
+- **Gap padrão de seção**: `space-y-7`.
 
 ### 5.4 Animações
 
-- Use as classes existentes (`animate-fade-in`, `animate-slide-in`, `animate-pulse-soft`, `animate-float`) — montagem de página típica: `<div className="animate-fade-in space-y-8">`.
-- Transições de hover: `transition-all duration-200` (consistente com Sidebar).
+- Use as classes existentes (`animate-fade-in`, `animate-slide-in`, `animate-toast-in`).
+- Transições: `transition-[background,color] duration-120` (durations `120`/`350` estão no theme do Tailwind — não use `duration-[120ms]` arbitrário, é ambíguo).
 - Não adicione bibliotecas de animação (framer-motion etc.) sem necessidade real.
 
 ### 5.5 Dark mode
@@ -215,37 +224,27 @@ Prioridade central deste projeto. Toda nova UI deve passar nos dois cenários **
 
 ### 6.4 Mobile nativo — Capacitor
 
-Estratégia escolhida: **Capacitor** wrapa o web-app existente em shell nativo (Android APK/AAB + iOS IPA), sem reescrever componentes. Fluxo:
+Estratégia escolhida: **Capacitor 8** wrapa o web-app existente em shell nativo (Android APK/AAB + iOS IPA), sem reescrever componentes. Já está configurado. Fluxo:
 
 ```
 npm run build  →  npx cap sync  →  Gradle (Android) / Xcode (iOS)
 ```
 
-**Setup (uma vez por plataforma):**
-```bash
-# na pasta apps/web-app
-npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
-npx cap init NutriPlan com.nutriplan.app --web-dir dist
-npx cap add android
-npx cap add ios          # requer macOS
-```
-
 **Arquivos-chave:**
-- `apps/web-app/capacitor.config.ts` — configuração do app (appId, server URL).
-- `apps/web-app/android/` — projeto Gradle gerado; **não editar manualmente** exceto `app/src/main/res/` (ícones, splash).
-- `apps/web-app/ios/` — projeto Xcode gerado; mesma regra.
+- `apps/web-app/capacitor.config.ts` — configuração do app (`com.nutriplan.app`, webDir `dist`).
+- `apps/web-app/android/` — projeto Gradle **versionado** (o CI de mobile depende dele); não editar manualmente exceto `app/src/main/res/` (ícones, splash). Build outputs ficam fora do git via `.gitignore` próprio.
+- `apps/web-app/ios/` — quando for adicionado (`npx cap add ios`, requer macOS), mesma regra.
 
 **Fluxo de desenvolvimento:**
 ```bash
 npm run build && npx cap sync android   # atualiza WebView com o build mais recente
 npx cap open android                    # abre Android Studio (só para debug/emulador)
-npx cap open ios                        # abre Xcode
+npx cap run android                     # roda em dispositivo/emulador conectado
 ```
 
 **Regras:**
-- O `capacitor.config.ts` define `server.url` em dev (aponta para a API local). Em produção, remover `server` para usar o bundle estático.
+- Em dev, `server.url` no `capacitor.config.ts` pode apontar para a API local — **não commitar** essa alteração; em produção usa-se o bundle estático.
 - Plugins nativos (`@capacitor/push-notifications`, `@capacitor/camera`, etc.): só adicionar quando houver requisito real — cada plugin aumenta o APK.
-- **Não commitar** `android/` e `ios/` inteiros — apenas `capacitor.config.ts` e os arquivos customizados (`res/`, `Info.plist`). Deixar no `.gitignore` o que o Gradle/Xcode gera (`.gradle/`, `build/`, `Pods/`, etc.).
 
 **PWA (complementar):** Quando implementar, usar `vite-plugin-pwa`. Estratégia: `NetworkFirst` para `/api`, `CacheFirst` para assets. Não substitui o Capacitor — serve para usuários que não instalam o app nativo.
 
@@ -259,7 +258,7 @@ npx cap open ios                        # abre Xcode
   - Teste comportamento de componentes complexos que tomam decisões (Dashboard, PlanDetail).
   - Não escreva teste para componente que só renderiza props — é ruído.
 - **Backend**: não há suite ainda. Quando adicionar, usar `Microsoft.AspNetCore.Mvc.Testing` + `WebApplicationFactory` com Postgres descartável (Testcontainers). Não mocar `DbContext`.
-- **Antes de marcar tarefa de UI como concluída**: rode `bun run dev` (ou `npm run dev`) e teste o fluxo no navegador. Type-check e lint não substituem teste manual de UI.
+- **Antes de marcar tarefa de UI como concluída**: rode `npm run dev` e teste o fluxo no navegador. Type-check e lint não substituem teste manual de UI.
 
 ---
 
@@ -304,60 +303,11 @@ Atualmente o deploy é **push-based**: Coolify observa o repo, faz `git pull` no
 
 ### 9.2 Pipeline GitHub Actions
 
-CI vive em `.github/workflows/ci.yml`. Dois jobs paralelos (`api` e `web`), ambos com cache. Triggers: `pull_request` (qualquer alvo) + `push` em `main`/`dev`.
+CI vive em `.github/workflows/ci.yml` (source of truth — não duplicar aqui). Dois jobs paralelos com cache:
+- **api**: setup-dotnet 10 + cache NuGet → `dotnet restore` → `dotnet build -c Release` (test entra quando houver suite).
+- **web**: setup-node 20 + cache npm → `npm ci` → `lint` → `test` → `build`. **Lint com erro derruba o CI** — rode `npm run lint` antes de push.
 
-```yaml
-name: ci
-
-on:
-  pull_request:
-  push:
-    branches: [main, dev]
-
-jobs:
-  api:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/NutriPlan.Api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('apps/NutriPlan.Api/**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-      - run: dotnet restore
-      - run: dotnet build --no-restore -c Release
-      # - run: dotnet test --no-build -c Release (quando houver testes)
-
-  web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web-app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/web-app/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
-```
-
-Notas:
-- **.NET 10 está GA** — não precisa de `include-prerelease`.
-- **Cache NuGet** usa hash dos `.csproj`. Para chave mais precisa, ativar `RestorePackagesWithLockFile` e cachear por `packages.lock.json`.
-- **Cache npm** é o nativo do `setup-node` (mais correto que cachear `node_modules` direto).
+Triggers: `pull_request` (qualquer alvo) + `push` em `main`/`dev`.
 
 **Diretivas**:
 - CI **bloqueia merge em `main`** apenas se quebrar build/test/lint. Não adicionar gates pesados (coverage threshold, SAST, etc.) sem combinar.

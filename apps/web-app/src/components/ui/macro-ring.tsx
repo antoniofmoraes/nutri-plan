@@ -46,7 +46,7 @@ export function MacroRing({ totals, target, size = 220 }: MacroRingProps) {
                 strokeDasharray={dash}
                 strokeDashoffset={off}
                 strokeLinecap="butt"
-                className="transition-all duration-[350ms]"
+                className="transition-all duration-350"
               />
             );
           })}

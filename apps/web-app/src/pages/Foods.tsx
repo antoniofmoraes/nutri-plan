@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useFoodMutations } from '@/hooks/useFoods';
 import { Food } from '@/types';
 import { foodService } from '@/services/foodService';
@@ -41,6 +43,7 @@ export default function Foods() {
   const [total, setTotal] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFood, setEditingFood] = useState<Food | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Food | null>(null);
 
   const form = useForm<FoodFormData>({
     resolver: zodResolver(foodSchema),
@@ -48,7 +51,7 @@ export default function Foods() {
   });
 
   const loaderRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const isFirstLoadRef = useRef(true);
 
   const fetchFoods = useCallback(async (pageNum: number, search: string, reset: boolean) => {
     setIsLoading(true);
@@ -63,16 +66,15 @@ export default function Foods() {
     }
   }, []);
 
+  // Initial load fires immediately; subsequent searches are debounced
   useEffect(() => {
-    fetchFoods(1, searchQuery, true);
-  }, []);
-
-  useEffect(() => {
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    searchTimeoutRef.current = setTimeout(() => {
+    if (isFirstLoadRef.current) {
+      isFirstLoadRef.current = false;
       fetchFoods(1, searchQuery, true);
-    }, 300);
-    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+      return;
+    }
+    const timeout = setTimeout(() => fetchFoods(1, searchQuery, true), 300);
+    return () => clearTimeout(timeout);
   }, [searchQuery, fetchFoods]);
 
   useEffect(() => {
@@ -129,10 +131,13 @@ export default function Foods() {
     fetchFoods(1, searchQuery, true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
     await deleteFood(id);
     setFoods(prev => prev.filter(f => f.id !== id));
     setTotal(prev => prev - 1);
+    setDeleteTarget(null);
   };
 
   return (
@@ -176,25 +181,19 @@ export default function Foods() {
 
       {/* Content */}
       {foods.length === 0 && !isLoading ? (
-        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-            <Apple size={26} strokeWidth={1.6} />
-          </div>
-          <h3 className="text-[19px] font-semibold mb-1.5">
-            {searchQuery ? 'Nenhum alimento encontrado' : 'Nenhum alimento cadastrado'}
-          </h3>
-          <p className="text-muted max-w-[360px] mb-5">
-            {searchQuery
-              ? 'Tente buscar com outros termos'
-              : 'Adicione alimentos para usar em suas refeições'}
-          </p>
-          {!searchQuery && isAdmin && (
+        <EmptyState
+          icon={Apple}
+          title={searchQuery ? 'Nenhum alimento encontrado' : 'Nenhum alimento cadastrado'}
+          description={searchQuery
+            ? 'Tente buscar com outros termos'
+            : 'Adicione alimentos para usar em suas refeições'}
+          action={!searchQuery && isAdmin && (
             <Button variant="acc" onClick={handleOpenCreate}>
               <Plus size={16} />
               Adicionar primeiro alimento
             </Button>
           )}
-        </div>
+        />
       ) : (
         <>
           {/* Mobile: cards */}
@@ -219,7 +218,7 @@ export default function Foods() {
                         variant="ghost"
                         size="icon"
                         className="hover:text-danger"
-                        onClick={() => handleDelete(food.id)}
+                        onClick={() => setDeleteTarget(food)}
                       >
                         <Trash2 size={14} strokeWidth={1.6} />
                       </Button>
@@ -298,7 +297,7 @@ export default function Foods() {
                           <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEdit(food)}>
                             <Edit size={14} strokeWidth={1.6} />
                           </Button>
-                          <Button variant="ghost" size="icon-xs" className="hover:text-danger" onClick={() => handleDelete(food.id)}>
+                          <Button variant="ghost" size="icon-xs" className="hover:text-danger" onClick={() => setDeleteTarget(food)}>
                             <Trash2 size={14} strokeWidth={1.6} />
                           </Button>
                         </div>
@@ -387,6 +386,15 @@ export default function Foods() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={`Excluir "${deleteTarget?.name}"?`}
+        description="O alimento será removido do catálogo. Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

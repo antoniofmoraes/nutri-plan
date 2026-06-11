@@ -7,9 +7,10 @@ import { useMealPlans } from '@/hooks/useMealPlans';
 import type { PresetMeal, Food } from '@/types';
 import { PresetCard } from '@/components/preset-meals/PresetCard';
 import { PresetNameDialog } from '@/components/preset-meals/PresetNameDialog';
-import { DeletePresetDialog } from '@/components/preset-meals/DeletePresetDialog';
 import { AddFoodToPresetDialog } from '@/components/preset-meals/AddFoodToPresetDialog';
 import { ApplyPresetDialog } from '@/components/preset-meals/ApplyPresetDialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function PresetMeals() {
   const {
@@ -96,21 +97,17 @@ export default function PresetMeals() {
 
       {/* Content */}
       {presetMeals.length === 0 ? (
-        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-            <BookCopy size={26} strokeWidth={1.6} />
-          </div>
-          <h3 className="text-[19px] font-semibold mb-1.5">
-            Nenhuma refeição pronta
-          </h3>
-          <p className="text-muted max-w-[360px] mb-5">
-            Crie refeições prontas para reutilizar nos seus planos alimentares.
-          </p>
-          <Button variant="acc" onClick={handleOpenCreate}>
-            <Plus size={16} />
-            Criar primeira refeição
-          </Button>
-        </div>
+        <EmptyState
+          icon={BookCopy}
+          title="Nenhuma refeição pronta"
+          description="Crie refeições prontas para reutilizar nos seus planos alimentares."
+          action={
+            <Button variant="acc" onClick={handleOpenCreate}>
+              <Plus size={16} />
+              Criar primeira refeição
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {presetMeals.map((preset) => (
@@ -142,9 +139,11 @@ export default function PresetMeals() {
         onSubmit={handleSubmitName}
       />
 
-      <DeletePresetDialog
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Excluir refeição pronta"
+        confirmLabel="Excluir"
         onConfirm={handleConfirmDelete}
       />
 

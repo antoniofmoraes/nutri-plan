@@ -28,7 +28,7 @@ export function WeekView({ plan, readOnly, onDayClick, onAddFood, onRemoveFood, 
                     <button
                       type="button"
                       onClick={() => onDayClick(day.value)}
-                      className="text-left hover:opacity-80 transition-opacity duration-[120ms] w-full"
+                      className="text-left hover:opacity-80 transition-opacity duration-120 w-full"
                     >
                       <div className="flex items-baseline justify-between gap-1">
                         <span className="text-[13px] font-semibold">{day.short}</span>
@@ -105,7 +105,7 @@ export function WeekView({ plan, readOnly, onDayClick, onAddFood, onRemoveFood, 
                                       <button
                                         type="button"
                                         onClick={() => onRemoveFood(meal.id, food.id)}
-                                        className="opacity-0 group-hover:opacity-100 hover:text-danger flex-shrink-0 transition-opacity duration-[120ms]"
+                                        className="opacity-0 group-hover:opacity-100 hover:text-danger flex-shrink-0 transition-opacity duration-120"
                                       >
                                         <X size={12} />
                                       </button>

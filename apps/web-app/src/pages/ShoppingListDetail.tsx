@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ShoppingCart, Users, Link2, Copy, Check, LogOut, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import {
   DialogBody, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
 import { useMealPlans } from '@/hooks/useMealPlans';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { MealSlotGrid } from '@/components/shared/MealSlotGrid';
 import { ShoppingList } from '@/types';
 import { shoppingListService } from '@/services/shoppingListService';
@@ -23,8 +25,10 @@ export default function ShoppingListDetail() {
   const [selectedMealIds, setSelectedMealIds] = useState<Set<string>>(new Set());
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [memberRemoveTarget, setMemberRemoveTarget] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setIsLoading(true);
     try {
@@ -37,9 +41,9 @@ export default function ShoppingListDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id, navigate]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [load]);
 
   const handleSaveSelection = async () => {
     if (!id) return;
@@ -76,7 +80,7 @@ export default function ShoppingListDetail() {
   };
 
   const handleLeave = async () => {
-    if (!id || !confirm('Sair dessa lista?')) return;
+    if (!id) return;
     try {
       await shoppingListService.leave(id);
       navigate('/listas-compras');
@@ -85,10 +89,11 @@ export default function ShoppingListDetail() {
     }
   };
 
-  const handleRemoveMember = async (memberUserId: string) => {
-    if (!id || !confirm('Remover esse membro?')) return;
+  const handleConfirmRemoveMember = async () => {
+    if (!id || !memberRemoveTarget) return;
     try {
-      await shoppingListService.removeMember(id, memberUserId);
+      await shoppingListService.removeMember(id, memberRemoveTarget);
+      setMemberRemoveTarget(null);
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao remover');
@@ -135,7 +140,7 @@ export default function ShoppingListDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (isLoading) return <p className="text-center py-12 text-muted text-[13px]">Carregando...</p>;
+  if (isLoading) return <LoadingState label="Carregando lista…" />;
   if (!list) return null;
 
   return (
@@ -158,7 +163,7 @@ export default function ShoppingListDetail() {
         </div>
         <div className="flex items-center gap-2.5">
           {!list.isOwner && (
-            <Button variant="sec" onClick={handleLeave}>
+            <Button variant="sec" onClick={() => setLeaveConfirmOpen(true)}>
               <LogOut size={14} />
               Sair
             </Button>
@@ -232,8 +237,8 @@ export default function ShoppingListDetail() {
                   </div>
                   {list.isOwner && (
                     <button
-                      className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-[120ms]"
-                      onClick={() => handleRemoveMember(m.userId)}
+                      className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-120"
+                      onClick={() => setMemberRemoveTarget(m.userId)}
                     >
                       <X size={13} strokeWidth={1.6} />
                     </button>
@@ -271,7 +276,7 @@ export default function ShoppingListDetail() {
                     <button
                       type="button"
                       onClick={() => togglePlan(plan.id)}
-                      className="w-full flex items-center justify-between p-3 hover:bg-surface-alt transition-[background] duration-[120ms]"
+                      className="w-full flex items-center justify-between p-3 hover:bg-surface-alt transition-[background] duration-120"
                     >
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -340,6 +345,24 @@ export default function ShoppingListDetail() {
           </DialogBody>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        onOpenChange={setLeaveConfirmOpen}
+        title="Sair dessa lista?"
+        description="Você perderá o acesso até receber um novo convite."
+        confirmLabel="Sair"
+        onConfirm={handleLeave}
+      />
+
+      <ConfirmDialog
+        open={memberRemoveTarget !== null}
+        onOpenChange={(open) => { if (!open) setMemberRemoveTarget(null); }}
+        title="Remover esse membro?"
+        description="A pessoa perderá o acesso à lista."
+        confirmLabel="Remover"
+        onConfirm={handleConfirmRemoveMember}
+      />
     </div>
   );
 }

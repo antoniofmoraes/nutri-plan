@@ -42,7 +42,7 @@ export function DayView({ plan, readOnly, day, foods, onChangeDay, onAddFood, on
               key={d.value}
               onClick={() => onChangeDay(d.value)}
               className={cn(
-                'border rounded-[var(--r-md)] py-2.5 px-2 text-center transition-[background,border-color,color] duration-[120ms] cursor-pointer',
+                'border rounded-[var(--r-md)] py-2.5 px-2 text-center transition-[background,border-color,color] duration-120 cursor-pointer',
                 isActive
                   ? 'bg-ink text-bg border-ink'
                   : 'bg-surface border-line hover:bg-surface-alt'

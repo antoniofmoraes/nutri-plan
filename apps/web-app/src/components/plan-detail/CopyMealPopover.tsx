@@ -61,7 +61,7 @@ export function CopyMealPopover({ plan, meal, currentDay, onCopy }: CopyMealPopo
         <button
           type="button"
           onClick={toggleAll}
-          className="w-full text-left px-2 py-1.5 text-[12.5px] hover:bg-surface-alt rounded-[var(--r-sm)] transition-[background] duration-[120ms]"
+          className="w-full text-left px-2 py-1.5 text-[12.5px] hover:bg-surface-alt rounded-[var(--r-sm)] transition-[background] duration-120"
         >
           {selected.size === targets.length ? 'Desmarcar todos' : 'Marcar todos'}
         </button>
@@ -70,7 +70,7 @@ export function CopyMealPopover({ plan, meal, currentDay, onCopy }: CopyMealPopo
           {targets.map(({ day, meal: target }) => (
             <label
               key={target.id}
-              className="flex items-center gap-2 px-2 py-1.5 text-[12.5px] hover:bg-surface-alt rounded-[var(--r-sm)] cursor-pointer transition-[background] duration-[120ms]"
+              className="flex items-center gap-2 px-2 py-1.5 text-[12.5px] hover:bg-surface-alt rounded-[var(--r-sm)] cursor-pointer transition-[background] duration-120"
             >
               <Checkbox
                 checked={selected.has(target.id)}

@@ -26,7 +26,7 @@ export function MealSlotGrid({
       {/* Mobile */}
       <div className="space-y-3 md:hidden">
         {showSelectAll && onToggleAll && (
-          <label className="flex items-center gap-2.5 text-[13px] font-medium cursor-pointer px-3 py-3 hover:bg-surface-alt rounded-[var(--r-sm)] transition-[background] duration-[120ms] min-h-[48px]">
+          <label className="flex items-center gap-2.5 text-[13px] font-medium cursor-pointer px-3 py-3 hover:bg-surface-alt rounded-[var(--r-sm)] transition-[background] duration-120 min-h-[48px]">
             <Checkbox checked={allSelected} onCheckedChange={onToggleAll} className="h-5 w-5" />
             <span>Selecionar tudo</span>
           </label>
@@ -49,7 +49,7 @@ export function MealSlotGrid({
                 return (
                   <label
                     key={day.value}
-                    className="flex items-center gap-2.5 rounded-[var(--r-sm)] border border-line px-3 py-3 text-[13px] cursor-pointer hover:bg-surface-alt min-h-[48px] transition-[background] duration-[120ms]"
+                    className="flex items-center gap-2.5 rounded-[var(--r-sm)] border border-line px-3 py-3 text-[13px] cursor-pointer hover:bg-surface-alt min-h-[48px] transition-[background] duration-120"
                   >
                     <Checkbox
                       checked={selectedMealIds.has(meal.id)}
@@ -101,7 +101,7 @@ export function MealSlotGrid({
                   }
                   return (
                     <td key={day.value} className="p-3 text-center">
-                      <label className="inline-grid place-items-center w-10 h-10 cursor-pointer rounded-[var(--r-sm)] hover:bg-surface-alt transition-[background] duration-[120ms]">
+                      <label className="inline-grid place-items-center w-10 h-10 cursor-pointer rounded-[var(--r-sm)] hover:bg-surface-alt transition-[background] duration-120">
                         <Checkbox
                           checked={selectedMealIds.has(meal.id)}
                           onCheckedChange={() => onToggleMeal(meal.id)}

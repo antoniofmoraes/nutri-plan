@@ -16,6 +16,9 @@ import { DayView } from '@/components/plan-detail/DayView';
 import { SlotsManagerDialog } from '@/components/plan-detail/SlotsManagerDialog';
 import { AddFoodDialog } from '@/components/plan-detail/AddFoodDialog';
 import { ShareDialog } from '@/components/plan-sharing/ShareDialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -31,7 +34,7 @@ export default function PlanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    plan, addSlot, updateSlot, deleteSlot, reorderSlots,
+    plan, isLoading, addSlot, updateSlot, deleteSlot, reorderSlots,
     addFoodToMeal, removeFoodFromMeal, updateMealFood,
     setMealCheat, copyMeal, applyPreset,
   } = useMealPlan(id);
@@ -48,19 +51,23 @@ export default function PlanDetail() {
   const [slotsManagerOpen, setSlotsManagerOpen] = useState(false);
   const [foodDialogOpen, setFoodDialogOpen] = useState(false);
   const [targetMealId, setTargetMealId] = useState<string | null>(null);
+  const [slotDeleteTarget, setSlotDeleteTarget] = useState<string | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+
+  if (isLoading) {
+    return <LoadingState label="Carregando plano…" />;
+  }
 
   if (!plan) {
     return (
-      <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-        <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-          <CalendarRange size={26} strokeWidth={1.6} />
-        </div>
-        <h3 className="text-[19px] font-semibold mb-1.5">Plano não encontrado</h3>
-        <p className="text-muted max-w-[360px] mb-5">
-          Este plano pode ter sido excluído.
-        </p>
-        <Button variant="acc" onClick={() => navigate('/planos')}>Voltar para Planos</Button>
-      </div>
+      <EmptyState
+        icon={CalendarRange}
+        title="Plano não encontrado"
+        description="Este plano pode ter sido excluído."
+        action={
+          <Button variant="acc" onClick={() => navigate('/planos')}>Voltar para Planos</Button>
+        }
+      />
     );
   }
 
@@ -70,9 +77,10 @@ export default function PlanDetail() {
   const handleUpdateSlot = async (slotId: string, updates: { name?: string; time?: string }) => {
     await updateSlot(slotId, updates);
   };
-  const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm('Apagar essa refeição de todos os dias?')) return;
-    await deleteSlot(slotId);
+  const handleConfirmDeleteSlot = async () => {
+    if (!slotDeleteTarget) return;
+    await deleteSlot(slotDeleteTarget);
+    setSlotDeleteTarget(null);
   };
   const handleMoveSlot = async (slotId: string, direction: -1 | 1) => {
     const orderedSlots = [...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -104,7 +112,7 @@ export default function PlanDetail() {
     try {
       await setMealCheat(mealId, !currentlyCheat);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao atualizar');
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar');
     }
   };
   const handleCopyMeal = async (sourceMealId: string, targetMealIds: string[]) => {
@@ -112,11 +120,10 @@ export default function PlanDetail() {
     try {
       await copyMeal(sourceMealId, targetMealIds);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao copiar');
+      toast.error(err instanceof Error ? err.message : 'Erro ao copiar');
     }
   };
   const handleLeaveShare = async () => {
-    if (!confirm('Sair deste plano compartilhado?')) return;
     try {
       await sharing.leaveShare();
       toast.success('Você saiu do plano');
@@ -187,7 +194,7 @@ export default function PlanDetail() {
               <button
                 onClick={() => setViewMode('week')}
                 className={cn(
-                  'px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-[120ms]',
+                  'px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-120',
                   effectiveViewMode === 'week'
                     ? 'bg-surface text-ink shadow-1'
                     : 'text-muted hover:text-ink'
@@ -198,7 +205,7 @@ export default function PlanDetail() {
               <button
                 onClick={() => setViewMode('day')}
                 className={cn(
-                  'px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-[120ms]',
+                  'px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-120',
                   effectiveViewMode === 'day'
                     ? 'bg-surface text-ink shadow-1'
                     : 'text-muted hover:text-ink'
@@ -242,7 +249,7 @@ export default function PlanDetail() {
             </Button>
           )}
           {!isOwner && (
-            <Button variant="outline" size="sm" onClick={handleLeaveShare}>
+            <Button variant="outline" size="sm" onClick={() => setLeaveConfirmOpen(true)}>
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Sair</span>
             </Button>
@@ -300,7 +307,7 @@ export default function PlanDetail() {
         slots={[...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder)}
         onAdd={handleAddSlot}
         onUpdate={handleUpdateSlot}
-        onDelete={handleDeleteSlot}
+        onDelete={(slotId) => setSlotDeleteTarget(slotId)}
         onMove={handleMoveSlot}
       />
 
@@ -311,6 +318,24 @@ export default function PlanDetail() {
         presetMeals={presetMeals}
         onAddFood={handleAddFood}
         onApplyPreset={handleApplyPreset}
+      />
+
+      <ConfirmDialog
+        open={slotDeleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setSlotDeleteTarget(null); }}
+        title="Apagar essa refeição?"
+        description="Ela será removida de todos os dias do plano. Esta ação não pode ser desfeita."
+        confirmLabel="Apagar"
+        onConfirm={handleConfirmDeleteSlot}
+      />
+
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        onOpenChange={setLeaveConfirmOpen}
+        title="Sair deste plano compartilhado?"
+        description="Você perderá o acesso a este plano até receber um novo convite."
+        confirmLabel="Sair"
+        onConfirm={handleLeaveShare}
       />
     </div>
   );

@@ -3,7 +3,10 @@ import { Plus, CalendarRange } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMealPlans } from '@/hooks/useMealPlans';
 import { calculateDayMacros, calculateMealMacros } from '@/lib/macros';
-import { DashboardMealCard, MacroCards } from '@/components/dashboard/MealCard';
+import { MacroCards } from '@/components/dashboard/MacroCard';
+import { DashboardMealCard } from '@/components/dashboard/MealCard';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { MacroRing } from '@/components/ui/macro-ring';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,7 +28,7 @@ function getTodayIndex(): number {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { mealPlans } = useMealPlans();
+  const { mealPlans, isLoading } = useMealPlans();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
   useEffect(() => {
@@ -54,16 +57,29 @@ export default function Dashboard() {
     f: selectedPlan?.dailyFat || 70,
   };
 
-  const selectedDayLabel = weekDays.find(d => d.value === selectedDay)?.label || '';
   const selectedDayShort = weekDays.find(d => d.value === selectedDay)?.short || '';
 
   const foodCount = dayPlan?.meals.filter(m => !m.isCheat).reduce((a, m) => a + m.foods.length, 0) ?? 0;
 
+  if (isLoading) {
+    return <LoadingState label="Carregando planos…" />;
+  }
+
   if (mealPlans.length === 0) {
     return (
-      <div className="space-y-7">
-        <EmptyState />
-      </div>
+      <EmptyState
+        icon={CalendarRange}
+        title="Nenhum plano alimentar"
+        description="Crie seu primeiro plano para começar a planejar suas refeições da semana."
+        action={
+          <Button variant="acc" asChild>
+            <Link to="/planos">
+              <Plus size={16} />
+              Criar primeiro plano
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -145,20 +161,16 @@ export default function Dashboard() {
         </div>
 
         {!dayPlan || dayPlan.meals.length === 0 ? (
-          <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-              <CalendarRange size={26} strokeWidth={1.6} />
-            </div>
-            <h3 className="text-[19px] font-semibold mb-1.5">Nenhuma refeição</h3>
-            <p className="text-muted max-w-[360px] mb-5">
-              Adicione refeições a este dia no seu plano alimentar.
-            </p>
-            {selectedPlan && (
+          <EmptyState
+            icon={CalendarRange}
+            title="Nenhuma refeição"
+            description="Adicione refeições a este dia no seu plano alimentar."
+            action={selectedPlan && (
               <Button variant="acc" asChild>
                 <Link to={`/planos/${selectedPlan.id}`}>Editar plano</Link>
               </Button>
             )}
-          </div>
+          />
         ) : (
           <div className="flex flex-col gap-2.5">
             {dayPlan.meals.map(meal => (
@@ -175,26 +187,6 @@ export default function Dashboard() {
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-      <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-        <CalendarRange size={26} strokeWidth={1.6} />
-      </div>
-      <h3 className="text-[19px] font-semibold mb-1.5">Nenhum plano alimentar</h3>
-      <p className="text-muted max-w-[360px] mb-5">
-        Crie seu primeiro plano para começar a planejar suas refeições da semana.
-      </p>
-      <Button variant="acc" asChild>
-        <Link to="/planos">
-          <Plus size={16} />
-          Criar primeiro plano
-        </Link>
-      </Button>
-    </div>
-  );
-}
-
 function DayTabs({ value, onChange }: { value: WeekDay; onChange: (v: WeekDay) => void }) {
   return (
     <div className="grid grid-cols-7 gap-1.5">
@@ -205,7 +197,7 @@ function DayTabs({ value, onChange }: { value: WeekDay; onChange: (v: WeekDay) =
             key={day.value}
             onClick={() => onChange(day.value)}
             className={cn(
-              'border rounded-[var(--r-md)] py-2.5 px-2 text-center transition-[background,border-color,color] duration-[120ms] cursor-pointer',
+              'border rounded-[var(--r-md)] py-2.5 px-2 text-center transition-[background,border-color,color] duration-120 cursor-pointer',
               isActive
                 ? 'bg-ink text-bg border-ink'
                 : 'bg-surface border-line hover:bg-surface-alt'

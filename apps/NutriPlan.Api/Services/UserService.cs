@@ -24,6 +24,8 @@ public class UserService(AppDbContext db)
 
         if (request.Email is not null && request.Email != user.Email)
         {
+            if (user.Password is null)
+                throw new ApiException("Contas com login Google não podem alterar o email por aqui", 400);
             if (string.IsNullOrEmpty(request.CurrentPassword))
                 throw new ApiException("Senha atual é obrigatória para alterar o email", 400);
             if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password))

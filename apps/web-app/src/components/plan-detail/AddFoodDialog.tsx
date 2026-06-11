@@ -79,7 +79,7 @@ export function AddFoodDialog({
             <button
               onClick={() => setMode('food')}
               className={cn(
-                'flex-1 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-[120ms]',
+                'flex-1 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-120',
                 mode === 'food'
                   ? 'bg-surface text-ink shadow-1'
                   : 'text-muted hover:text-ink'
@@ -91,7 +91,7 @@ export function AddFoodDialog({
               onClick={() => presetMeals.length > 0 && setMode('preset')}
               disabled={presetMeals.length === 0}
               className={cn(
-                'flex-1 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-[120ms] flex items-center justify-center gap-1.5',
+                'flex-1 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background,color,box-shadow] duration-120 flex items-center justify-center gap-1.5',
                 mode === 'preset'
                   ? 'bg-surface text-ink shadow-1'
                   : 'text-muted hover:text-ink',
@@ -122,7 +122,7 @@ export function AddFoodDialog({
                       type="button"
                       onClick={() => setSelectedFoodId(f.id)}
                       className={cn(
-                        'w-full text-left px-3.5 py-2.5 flex items-center justify-between border-b border-line last:border-b-0 transition-[background] duration-[120ms] cursor-pointer',
+                        'w-full text-left px-3.5 py-2.5 flex items-center justify-between border-b border-line last:border-b-0 transition-[background] duration-120 cursor-pointer',
                         selectedFoodId === f.id ? 'bg-surface-alt' : 'hover:bg-surface-alt/50'
                       )}
                     >
@@ -162,7 +162,7 @@ export function AddFoodDialog({
                     type="button"
                     onClick={() => setSelectedPresetId(preset.id)}
                     className={cn(
-                      'w-full text-left px-3.5 py-2.5 border-b border-line last:border-b-0 transition-[background] duration-[120ms] cursor-pointer',
+                      'w-full text-left px-3.5 py-2.5 border-b border-line last:border-b-0 transition-[background] duration-120 cursor-pointer',
                       selectedPresetId === preset.id ? 'bg-surface-alt' : 'hover:bg-surface-alt/50'
                     )}
                   >

@@ -7,6 +7,9 @@ import {
   DialogBody, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { ShoppingListSummary } from '@/types';
 import { shoppingListService } from '@/services/shoppingListService';
 import { toast } from 'sonner';
@@ -16,6 +19,7 @@ export default function ShoppingLists() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -42,10 +46,11 @@ export default function ShoppingLists() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Apagar essa lista?')) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await shoppingListService.delete(id);
+      await shoppingListService.delete(deleteTarget);
+      setDeleteTarget(null);
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao excluir');
@@ -73,27 +78,25 @@ export default function ShoppingLists() {
 
       {/* Content */}
       {isLoading ? (
-        <p className="text-muted text-center py-8 text-[13px]">Carregando...</p>
+        <LoadingState label="Carregando listas…" />
       ) : lists.length === 0 ? (
-        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-            <ShoppingCart size={26} strokeWidth={1.6} />
-          </div>
-          <h3 className="text-[19px] font-semibold mb-1.5">Nenhuma lista ainda</h3>
-          <p className="text-muted max-w-[360px] mb-5">
-            Crie uma lista para começar a organizar suas compras.
-          </p>
-          <Button variant="acc" onClick={() => setDialogOpen(true)}>
-            <Plus size={16} />
-            Criar primeira lista
-          </Button>
-        </div>
+        <EmptyState
+          icon={ShoppingCart}
+          title="Nenhuma lista ainda"
+          description="Crie uma lista para começar a organizar suas compras."
+          action={
+            <Button variant="acc" onClick={() => setDialogOpen(true)}>
+              <Plus size={16} />
+              Criar primeira lista
+            </Button>
+          }
+        />
       ) : (
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {lists.map((list) => (
             <div
               key={list.id}
-              className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden hover:shadow-2 transition-shadow duration-[120ms]"
+              className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden hover:shadow-2 transition-shadow duration-120"
             >
               <div className="p-[22px]">
                 <div className="flex items-start justify-between gap-2">
@@ -109,8 +112,8 @@ export default function ShoppingLists() {
                   </Link>
                   {list.isOwner && (
                     <button
-                      className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-[120ms]"
-                      onClick={() => handleDelete(list.id)}
+                      className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-120"
+                      onClick={() => setDeleteTarget(list.id)}
                     >
                       <Trash2 size={14} strokeWidth={1.6} />
                     </button>
@@ -162,6 +165,14 @@ export default function ShoppingLists() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Apagar essa lista?"
+        confirmLabel="Apagar"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

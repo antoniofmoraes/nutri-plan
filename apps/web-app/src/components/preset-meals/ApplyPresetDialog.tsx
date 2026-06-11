@@ -82,7 +82,7 @@ export function ApplyPresetDialog({
           <div>
             <label className="label-mono">Plano alimentar</label>
             <select
-              className="flex h-10 w-full rounded-[var(--r-md)] border border-line bg-surface px-3 py-2 text-[13.5px] focus:outline-none focus:border-ink transition-[border-color] duration-[120ms]"
+              className="flex h-10 w-full rounded-[var(--r-md)] border border-line bg-surface px-3 py-2 text-[13.5px] focus:outline-none focus:border-ink transition-[border-color] duration-120"
               value={selectedPlanId}
               onChange={(e) => handleSelectPlan(e.target.value)}
             >

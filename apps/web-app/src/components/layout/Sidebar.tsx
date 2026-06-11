@@ -66,7 +66,7 @@ function SidebarBody({
               onClick={onNavigate}
               className={cn(
                 'flex items-center gap-[11px] px-3 py-2.5 rounded-[var(--r-md)] text-sm font-medium border border-transparent',
-                'transition-[background,border-color,color] duration-[120ms]',
+                'transition-[background,border-color,color] duration-120',
                 isActive
                   ? 'bg-ink text-bg'
                   : 'text-ink-2 hover:bg-surface-alt'
@@ -101,7 +101,7 @@ function SidebarBody({
         <button
           onClick={logout}
           title="Sair"
-          className="w-[30px] h-[30px] rounded-lg grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-[120ms]"
+          className="w-[30px] h-[30px] rounded-lg grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-120"
         >
           <LogOut size={16} strokeWidth={1.6} />
         </button>

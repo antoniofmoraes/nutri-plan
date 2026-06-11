@@ -23,4 +23,12 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // shadcn/ui (vendored) e contexts (padrão provider + hook) exportam
+    // helpers junto de componentes por design — fast refresh não se aplica.
+    files: ["src/components/ui/**", "src/contexts/**"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 );

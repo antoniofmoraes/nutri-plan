@@ -10,7 +10,7 @@ interface MacroSlot {
   icon: LucideIcon;
 }
 
-export function macroSlots(
+function macroSlots(
   totals: { cal: number; p: number; c: number; f: number },
   target: { cal: number; p: number; c: number; f: number },
 ): MacroSlot[] {

@@ -153,14 +153,14 @@ function SlotEditRow({ slot, isFirst, isLast, onMove, onUpdate, onDelete }: Slot
         />
         <div className="flex flex-col">
           <button
-            className="h-[18px] w-7 grid place-items-center text-muted hover:text-ink disabled:opacity-30 transition-colors duration-[120ms]"
+            className="h-[18px] w-7 grid place-items-center text-muted hover:text-ink disabled:opacity-30 transition-colors duration-120"
             disabled={isFirst}
             onClick={() => onMove(slot.id, -1)}
           >
             <ChevronUp size={13} />
           </button>
           <button
-            className="h-[18px] w-7 grid place-items-center text-muted hover:text-ink disabled:opacity-30 transition-colors duration-[120ms]"
+            className="h-[18px] w-7 grid place-items-center text-muted hover:text-ink disabled:opacity-30 transition-colors duration-120"
             disabled={isLast}
             onClick={() => onMove(slot.id, 1)}
           >
@@ -168,7 +168,7 @@ function SlotEditRow({ slot, isFirst, isLast, onMove, onUpdate, onDelete }: Slot
           </button>
         </div>
         <button
-          className="w-[30px] h-[30px] sm:w-[26px] sm:h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-[120ms] ml-auto"
+          className="w-[30px] h-[30px] sm:w-[26px] sm:h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger transition-[background,color] duration-120 ml-auto"
           onClick={() => onDelete(slot.id)}
         >
           <Trash2 size={14} strokeWidth={1.6} />

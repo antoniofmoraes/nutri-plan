@@ -118,7 +118,7 @@ function InlineFoodSwap({
                   setOpen(false);
                   setSearch('');
                 }}
-                className={`w-full text-left px-3 py-2 text-[12.5px] hover:bg-surface-alt border-b border-line last:border-b-0 transition-[background] duration-[120ms] ${
+                className={`w-full text-left px-3 py-2 text-[12.5px] hover:bg-surface-alt border-b border-line last:border-b-0 transition-[background] duration-120 ${
                   currentFood.id === food.id ? 'bg-surface-alt' : ''
                 }`}
               >
@@ -171,7 +171,7 @@ export function EditableFoodRow({ foods, currentFood, currentQuantity, readOnly,
       </div>
       {!readOnly && (
         <button
-          className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-[120ms]"
+          className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-120"
           onClick={onRemove}
           title="Remover"
         >

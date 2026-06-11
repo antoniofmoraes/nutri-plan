@@ -4,11 +4,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogBody, DialogTitle, DialogDescription,
-  DialogTrigger, DialogFooter, DialogClose,
+  DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMealPlans } from '@/hooks/useMealPlans';
@@ -117,19 +118,17 @@ export default function MealPlans() {
 
       {/* Grid or empty state */}
       {mealPlans.length === 0 ? (
-        <div className="bg-surface border border-line rounded-lg shadow-1 p-12 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-lg bg-accent-soft text-accent grid place-items-center mb-4">
-            <CalendarRange size={26} strokeWidth={1.6} />
-          </div>
-          <h3 className="text-[19px] font-semibold mb-1.5">Nenhum plano alimentar</h3>
-          <p className="text-muted max-w-[360px] mb-5">
-            Crie seu primeiro plano para começar a organizar suas refeições.
-          </p>
-          <Button variant="acc" onClick={handleOpenCreate}>
-            <Plus size={16} />
-            Criar primeiro plano
-          </Button>
-        </div>
+        <EmptyState
+          icon={CalendarRange}
+          title="Nenhum plano alimentar"
+          description="Crie seu primeiro plano para começar a organizar suas refeições."
+          action={
+            <Button variant="acc" onClick={handleOpenCreate}>
+              <Plus size={16} />
+              Criar primeiro plano
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3.5">
           {mealPlans.map((plan) => (
@@ -213,25 +212,13 @@ export default function MealPlans() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
-      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir este plano?</DialogTitle>
-            <DialogDescription>
-              Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost">Cancelar</Button>
-            </DialogClose>
-            <Button variant="danger" onClick={handleConfirmDelete}>
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Excluir este plano?"
+        confirmLabel="Excluir"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
@@ -254,7 +241,7 @@ function PlanCard({
 
   return (
     <div
-      className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden cursor-pointer transition-shadow duration-[120ms] hover:shadow-2"
+      className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden cursor-pointer transition-shadow duration-120 hover:shadow-2"
       onClick={onOpen}
     >
       <div className="p-[22px]">
@@ -271,7 +258,7 @@ function PlanCard({
             </span>
           ) : (
             <button
-              className="w-[30px] h-[30px] rounded-lg grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-[120ms]"
+              className="w-[30px] h-[30px] rounded-lg grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-120"
               onClick={(e) => { e.stopPropagation(); onSetMain(); }}
               title="Tornar principal"
             >
@@ -304,13 +291,13 @@ function PlanCard({
         {plan.role === 'owner' && (
           <div className="flex gap-1">
             <button
-              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-ink transition-[background,color] duration-[120ms]"
+              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-ink transition-[background,color] duration-120"
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
             >
               <Edit size={14} strokeWidth={1.6} />
             </button>
             <button
-              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-danger transition-[background,color] duration-[120ms]"
+              className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface hover:text-danger transition-[background,color] duration-120"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
             >
               <Trash2 size={14} strokeWidth={1.6} />

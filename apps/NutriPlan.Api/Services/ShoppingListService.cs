@@ -212,10 +212,10 @@ public class ShoppingListService(AppDbContext db)
 
     private async Task SetMealsInternalAsync(ShoppingList list, List<Guid> mealIds, Guid userId)
     {
-        // Validate: all meals must belong to plans the user can access (owner or member)
+        // Validate: all meals must belong to plans the user can read (own or shared with them)
         var accessibleMealIds = await db.Meals
-            .Include(m => m.DayPlan).ThenInclude(dp => dp.MealPlan)
-            .Where(m => mealIds.Contains(m.Id) && m.DayPlan.MealPlan.UserId == userId)
+            .Where(m => mealIds.Contains(m.Id)
+                && (m.DayPlan.MealPlan.UserId == userId || m.DayPlan.MealPlan.SharedWithUserId == userId))
             .Select(m => m.Id)
             .ToListAsync();
 

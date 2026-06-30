@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using WP = DocumentFormat.OpenXml.Wordprocessing;
@@ -37,15 +39,38 @@ public class MealPlanExportService
         ["ganhar"] = "Ganho de Massa",
     };
 
+    private static double GetPortionGrams(string portion)
+    {
+        var match = Regex.Match(portion, @"(\d+(?:[.,]\d+)?)\s*(?:g|grama|gramas)\b", RegexOptions.IgnoreCase);
+        if (!match.Success) return 100;
+
+        var normalized = match.Groups[1].Value.Replace(',', '.');
+        return double.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out var grams) && grams > 0
+            ? grams
+            : 100;
+    }
+
+    private static (double Cal, double Prot, double Carb, double Fat) CalcFoodMacros(MealFoodResponse mealFood)
+    {
+        var ratio = mealFood.Quantity / GetPortionGrams(mealFood.Food.Portion);
+        return (
+            mealFood.Food.Calories * ratio,
+            mealFood.Food.Protein * ratio,
+            mealFood.Food.Carbs * ratio,
+            mealFood.Food.Fat * ratio
+        );
+    }
+
     private static (double Cal, double Prot, double Carb, double Fat) CalcMealMacros(MealResponse meal)
     {
         double cal = 0, p = 0, c = 0, f = 0;
         foreach (var mf in meal.Foods)
         {
-            cal += mf.Food.Calories * mf.Quantity / 100;
-            p += mf.Food.Protein * mf.Quantity / 100;
-            c += mf.Food.Carbs * mf.Quantity / 100;
-            f += mf.Food.Fat * mf.Quantity / 100;
+            var macros = CalcFoodMacros(mf);
+            cal += macros.Cal;
+            p += macros.Prot;
+            c += macros.Carb;
+            f += macros.Fat;
         }
         return (cal, p, c, f);
     }
@@ -118,11 +143,8 @@ public class MealPlanExportService
                 sb.AppendLine("|---|---|---|---|---|---|");
                 foreach (var mf in meal.Foods)
                 {
-                    var cal = mf.Food.Calories * mf.Quantity / 100;
-                    var p = mf.Food.Protein * mf.Quantity / 100;
-                    var c = mf.Food.Carbs * mf.Quantity / 100;
-                    var f = mf.Food.Fat * mf.Quantity / 100;
-                    sb.AppendLine($"| {mf.Food.Name} | {mf.Quantity:F0} | {cal:F0} | {p:F1} | {c:F1} | {f:F1} |");
+                    var macros = CalcFoodMacros(mf);
+                    sb.AppendLine($"| {mf.Food.Name} | {mf.Quantity:F0} | {macros.Cal:F0} | {macros.Prot:F1} | {macros.Carb:F1} | {macros.Fat:F1} |");
                 }
 
                 var mm = CalcMealMacros(meal);
@@ -254,18 +276,15 @@ public class MealPlanExportService
 
         foreach (var mf in foods)
         {
-            var cal = mf.Food.Calories * mf.Quantity / 100;
-            var p = mf.Food.Protein * mf.Quantity / 100;
-            var c = mf.Food.Carbs * mf.Quantity / 100;
-            var f = mf.Food.Fat * mf.Quantity / 100;
+            var macros = CalcFoodMacros(mf);
 
             var row = new WP.TableRow();
             row.AppendChild(DocxCell(mf.Food.Name, colWidths[0]));
             row.AppendChild(DocxCell($"{mf.Quantity:F0}", colWidths[1]));
-            row.AppendChild(DocxCell($"{cal:F0}", colWidths[2]));
-            row.AppendChild(DocxCell($"{p:F1}", colWidths[3]));
-            row.AppendChild(DocxCell($"{c:F1}", colWidths[4]));
-            row.AppendChild(DocxCell($"{f:F1}", colWidths[5]));
+            row.AppendChild(DocxCell($"{macros.Cal:F0}", colWidths[2]));
+            row.AppendChild(DocxCell($"{macros.Prot:F1}", colWidths[3]));
+            row.AppendChild(DocxCell($"{macros.Carb:F1}", colWidths[4]));
+            row.AppendChild(DocxCell($"{macros.Fat:F1}", colWidths[5]));
             table.AppendChild(row);
         }
 
@@ -390,17 +409,14 @@ public class MealPlanExportService
                                         foreach (var (mf, idx) in meal.Foods.Select((m, i) => (m, i)))
                                         {
                                             var bg = idx % 2 == 0 ? Colors.White : Colors.Grey.Lighten5;
-                                            var cal = mf.Food.Calories * mf.Quantity / 100;
-                                            var p = mf.Food.Protein * mf.Quantity / 100;
-                                            var c = mf.Food.Carbs * mf.Quantity / 100;
-                                            var f = mf.Food.Fat * mf.Quantity / 100;
+                                            var macros = CalcFoodMacros(mf);
 
                                             table.Cell().Background(bg).Padding(4).Text(mf.Food.Name).FontSize(8);
                                             table.Cell().Background(bg).Padding(4).Text($"{mf.Quantity:F0}").FontSize(8);
-                                            table.Cell().Background(bg).Padding(4).Text($"{cal:F0}").FontSize(8);
-                                            table.Cell().Background(bg).Padding(4).Text($"{p:F1}").FontSize(8);
-                                            table.Cell().Background(bg).Padding(4).Text($"{c:F1}").FontSize(8);
-                                            table.Cell().Background(bg).Padding(4).Text($"{f:F1}").FontSize(8);
+                                            table.Cell().Background(bg).Padding(4).Text($"{macros.Cal:F0}").FontSize(8);
+                                            table.Cell().Background(bg).Padding(4).Text($"{macros.Prot:F1}").FontSize(8);
+                                            table.Cell().Background(bg).Padding(4).Text($"{macros.Carb:F1}").FontSize(8);
+                                            table.Cell().Background(bg).Padding(4).Text($"{macros.Fat:F1}").FontSize(8);
                                         }
 
                                         var mm = CalcMealMacros(meal);

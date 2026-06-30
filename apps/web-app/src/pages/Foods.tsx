@@ -351,7 +351,7 @@ export default function Foods() {
               </div>
               <div>
                 <label className="label-mono">Calorias (kcal)</label>
-                <Input type="number" inputMode="decimal" placeholder="0" {...form.register('calories')} />
+                <Input type="number" inputMode="decimal" step="any" placeholder="0" {...form.register('calories')} />
                 {form.formState.errors.calories && (
                   <p className="text-xs text-danger mt-1.5">{form.formState.errors.calories.message}</p>
                 )}
@@ -359,19 +359,19 @@ export default function Foods() {
               <div className="grid grid-cols-4 gap-2.5">
                 <div>
                   <label className="label-mono">Proteína (g)</label>
-                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('protein')} />
+                  <Input type="number" inputMode="decimal" step="any" placeholder="0" {...form.register('protein')} />
                 </div>
                 <div>
                   <label className="label-mono">Carbo. (g)</label>
-                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('carbs')} />
+                  <Input type="number" inputMode="decimal" step="any" placeholder="0" {...form.register('carbs')} />
                 </div>
                 <div>
                   <label className="label-mono">Gordura (g)</label>
-                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fat')} />
+                  <Input type="number" inputMode="decimal" step="any" placeholder="0" {...form.register('fat')} />
                 </div>
                 <div>
                   <label className="label-mono">Fibras (g)</label>
-                  <Input type="number" inputMode="decimal" placeholder="0" {...form.register('fibers')} />
+                  <Input type="number" inputMode="decimal" step="any" placeholder="0" {...form.register('fibers')} />
                 </div>
               </div>
             </DialogBody>

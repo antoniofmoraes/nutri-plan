@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { calculateFoodMacros } from '@/lib/macros';
 import type { Food } from '@/types';
 
 interface EditableFoodRowProps {
@@ -123,7 +124,9 @@ function InlineFoodSwap({
                 }`}
               >
                 <div className="font-medium truncate">{food.name}</div>
-                <div className="mono text-[10.5px] text-muted mt-0.5">{food.calories} kcal/100g</div>
+                <div className="mono text-[10.5px] text-muted mt-0.5">
+                  {food.calories} kcal/{food.portion || '100g'}
+                </div>
               </button>
             ))
           )}
@@ -134,6 +137,8 @@ function InlineFoodSwap({
 }
 
 export function EditableFoodRow({ foods, currentFood, currentQuantity, readOnly, onSave, onRemove }: EditableFoodRowProps) {
+  const macros = calculateFoodMacros(currentFood, currentQuantity);
+
   return (
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-line last:border-b-0 group">
       <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
@@ -156,16 +161,16 @@ export function EditableFoodRow({ foods, currentFood, currentQuantity, readOnly,
         )}
         <div className="mono inline-flex gap-2 text-[12px] font-medium">
           <span className="num" style={{ color: 'var(--m-cal)' }}>
-            {(currentFood.calories * currentQuantity / 100).toFixed(0)} kcal
+            {macros.calories.toFixed(0)} kcal
           </span>
           <span style={{ color: 'var(--m-prot)' }}>
-            P {(currentFood.protein * currentQuantity / 100).toFixed(0)}g
+            P {macros.protein.toFixed(0)}g
           </span>
           <span style={{ color: 'var(--m-carb)' }}>
-            C {(currentFood.carbs * currentQuantity / 100).toFixed(0)}g
+            C {macros.carbs.toFixed(0)}g
           </span>
           <span style={{ color: 'var(--m-fat)' }}>
-            G {(currentFood.fat * currentQuantity / 100).toFixed(0)}g
+            G {macros.fat.toFixed(0)}g
           </span>
         </div>
       </div>

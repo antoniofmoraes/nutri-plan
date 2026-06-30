@@ -6,7 +6,8 @@ import {
   DialogBody, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { calculateFoodMacros, getFoodPortionGrams } from '@/lib/macros';
+import { cn, parseDecimalInput } from '@/lib/utils';
 import type { Food, PresetMeal } from '@/types';
 
 interface AddFoodDialogProps {
@@ -31,6 +32,8 @@ export function AddFoodDialog({
   const [selectedFoodId, setSelectedFoodId] = useState('');
   const [foodQuantity, setFoodQuantity] = useState('100');
   const [selectedPresetId, setSelectedPresetId] = useState('');
+  const parsedFoodQuantity = parseDecimalInput(foodQuantity);
+  const hasValidFoodQuantity = parsedFoodQuantity !== null && parsedFoodQuantity > 0;
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -45,8 +48,8 @@ export function AddFoodDialog({
 
   const handleAddFood = () => {
     const food = foods.find(f => f.id === selectedFoodId);
-    if (!food) return;
-    onAddFood(food, Number(foodQuantity));
+    if (!food || !hasValidFoodQuantity) return;
+    onAddFood(food, parsedFoodQuantity);
     handleOpenChange(false);
   };
 
@@ -61,7 +64,9 @@ export function AddFoodDialog({
   ).slice(0, 20);
 
   const selectedFood = foods.find(f => f.id === selectedFoodId);
-  const estimatedKcal = selectedFood ? Math.round(selectedFood.calories * Number(foodQuantity) / 100) : 0;
+  const estimatedKcal = selectedFood && hasValidFoodQuantity
+    ? Math.round(calculateFoodMacros(selectedFood, parsedFoodQuantity).calories)
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -120,7 +125,10 @@ export function AddFoodDialog({
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setSelectedFoodId(f.id)}
+                      onClick={() => {
+                        setSelectedFoodId(f.id);
+                        setFoodQuantity(String(getFoodPortionGrams(f.portion)));
+                      }}
                       className={cn(
                         'w-full text-left px-3.5 py-2.5 flex items-center justify-between border-b border-line last:border-b-0 transition-[background] duration-120 cursor-pointer',
                         selectedFoodId === f.id ? 'bg-surface-alt' : 'hover:bg-surface-alt/50'
@@ -141,11 +149,12 @@ export function AddFoodDialog({
                 <div>
                   <label className="label-mono">Quantidade (g)</label>
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
                     placeholder="100"
                     value={foodQuantity}
                     onChange={(e) => setFoodQuantity(e.target.value)}
+                    aria-invalid={foodQuantity.length > 0 && !hasValidFoodQuantity}
                   />
                 </div>
                 <div className="mono text-[11px] text-muted pb-3">
@@ -190,7 +199,7 @@ export function AddFoodDialog({
             <Button variant="ghost">Cancelar</Button>
           </DialogClose>
           {mode === 'food' ? (
-            <Button variant="acc" onClick={handleAddFood} disabled={!selectedFoodId}>
+            <Button variant="acc" onClick={handleAddFood} disabled={!selectedFoodId || !hasValidFoodQuantity}>
               Adicionar
             </Button>
           ) : (

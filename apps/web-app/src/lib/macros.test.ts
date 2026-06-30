@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  calculateFoodMacros,
   calculateRawMealMacros,
+  getFoodPortionGrams,
   buildSlotAverages,
   calculateMealMacros,
   calculateDayMacros,
@@ -95,6 +97,42 @@ describe("calculateRawMealMacros", () => {
     });
     const result = calculateRawMealMacros(meal);
     expect(result.calories).toBeCloseTo(65);
+  });
+
+  it("usa a porção cadastrada como base dos macros", () => {
+    const meal = makeMeal({
+      foods: [{
+        food: { ...rice, calories: 484, protein: 36.4, carbs: 52.9, fat: 14.2, portion: "370g" },
+        quantity: 370,
+      }],
+    });
+
+    const result = calculateRawMealMacros(meal);
+    expect(result.calories).toBeCloseTo(484);
+    expect(result.protein).toBeCloseTo(36.4);
+    expect(result.carbs).toBeCloseTo(52.9);
+    expect(result.fat).toBeCloseTo(14.2);
+  });
+});
+
+describe("food portions", () => {
+  it("interpreta gramas com espaço e vírgula decimal", () => {
+    expect(getFoodPortionGrams("Porção 370 g")).toBe(370);
+    expect(getFoodPortionGrams("12,5 gramas")).toBe(12.5);
+  });
+
+  it("usa 100g quando a porção não informa gramas", () => {
+    expect(getFoodPortionGrams("1 unidade")).toBe(100);
+    expect(getFoodPortionGrams()).toBe(100);
+  });
+
+  it("calcula quantidades proporcionais à porção", () => {
+    const macros = calculateFoodMacros(
+      { calories: 484, protein: 36.4, carbs: 52.9, fat: 14.2, portion: "370g" },
+      185
+    );
+    expect(macros.calories).toBeCloseTo(242);
+    expect(macros.protein).toBeCloseTo(18.2);
   });
 });
 

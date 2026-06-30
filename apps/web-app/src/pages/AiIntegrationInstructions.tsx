@@ -21,7 +21,7 @@ export default function AiIntegrationInstructions() {
             Como conectar sua IA
           </h1>
           <p className="mt-2 max-w-[68ch] text-sm text-muted">
-            Use esta pagina como guia quando a conexao publica estiver ativa. Antes de conectar, escolha quais planos a IA pode ler ou editar.
+            Antes de conectar, escolha quais planos a IA pode ler ou editar. A autorizacao segura acontece pela sua conta NutriPlan.
           </p>
         </div>
         <Button variant="sec" asChild>
@@ -79,7 +79,7 @@ export default function AiIntegrationInstructions() {
             'Abra a area de apps, conectores ou ferramentas do ChatGPT.',
             'Adicione o servidor MCP do NutriPlan usando o endereco acima.',
             'Autorize sua conta NutriPlan quando a tela de login aparecer.',
-            'Peça para consultar ou ajustar apenas os planos liberados.',
+            'Peca para consultar ou ajustar apenas os planos liberados.',
           ]}
         />
         <InstructionPanel
@@ -101,9 +101,9 @@ export default function AiIntegrationInstructions() {
           </div>
           <div>
             <div className="eyebrow mb-2">Status</div>
-            <h2 className="text-[19px] font-semibold">Permissoes prontas, login publico pendente</h2>
+            <h2 className="text-[19px] font-semibold">Login seguro pronto no NutriPlan</h2>
             <p className="mt-1.5 max-w-[76ch] text-sm text-muted">
-              A configuracao por plano ja esta preparada no app. Para liberar esta pagina para usuarios finais, ainda falta ativar o login seguro/OAuth da integracao, evitando que alguem precise copiar tokens manualmente.
+              O NutriPlan ja possui autorizacao OAuth para integracoes MCP. A disponibilidade final ainda depende do ChatGPT, Claude ou outro cliente permitir adicionar conectores personalizados na sua conta.
             </p>
           </div>
         </div>

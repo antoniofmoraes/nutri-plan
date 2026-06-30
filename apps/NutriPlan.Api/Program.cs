@@ -74,6 +74,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                var authHeader = context.Request.Headers.Authorization.ToString();
+                if (context.Request.Path.StartsWithSegments("/api/mcp")
+                    && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                    && authHeader["Bearer ".Length..].Count(c => c == '.') != 2)
+                {
+                    context.NoResult();
+                }
+
+                return Task.CompletedTask;
+            },
             OnChallenge = context =>
             {
                 context.HandleResponse();
@@ -161,6 +173,7 @@ builder.Services.AddScoped<ShoppingListService>();
 builder.Services.AddScoped<PresetMealService>();
 builder.Services.AddScoped<MealPlanExportService>();
 builder.Services.AddScoped<McpService>();
+builder.Services.AddScoped<OAuthService>();
 
 // JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -182,7 +195,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
-    await DbSeeder.SeedAsync(db);
+    await DbSeeder.SeedAsync(db, builder.Configuration);
 }
 
 // Helper to extract userId from JWT claims
@@ -193,6 +206,21 @@ static Guid GetUserId(HttpContext ctx)
 }
 
 // ─── Health ───────────────────────────────────────────────
+static async Task<(Guid UserId, bool CanWrite)> GetMcpRequestContextAsync(HttpContext ctx, OAuthService oauthSvc)
+{
+    var jwtClaim = ctx.User.FindFirst("userId")?.Value;
+    if (jwtClaim is not null)
+        return (Guid.Parse(jwtClaim), true);
+
+    var authHeader = ctx.Request.Headers.Authorization.ToString();
+    if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        throw new ApiException("Token nao fornecido", 401);
+
+    var token = authHeader["Bearer ".Length..].Trim();
+    var validation = await oauthSvc.ValidateAccessTokenAsync(token, "mcp:read");
+    return (validation.UserId, validation.Scopes.Contains("mcp:write"));
+}
+
 app.MapGet("/", () => Results.Json(new { success = true, message = "NutriPlan API", version = "1.0.0", timestamp = DateTime.UtcNow }));
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 
@@ -224,6 +252,51 @@ auth.MapPost("/logout", () =>
     .RequireAuthorization();
 
 // ─── Users ────────────────────────────────────────────────
+// OAuth for AI integrations
+var oauth = app.MapGroup("/api/oauth");
+
+oauth.MapGet("/authorize/preview", async (
+    string? response_type,
+    string? client_id,
+    string? redirect_uri,
+    string? scope,
+    string? state,
+    string? code_challenge,
+    string? code_challenge_method,
+    OAuthService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.PreviewAuthorizeAsync(
+        response_type,
+        client_id,
+        redirect_uri,
+        scope,
+        state,
+        code_challenge,
+        code_challenge_method))))
+    .RequireAuthorization();
+
+oauth.MapPost("/authorize/confirm", async (HttpContext ctx, OAuthAuthorizeConfirmRequest request, OAuthService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.ConfirmAuthorizeAsync(GetUserId(ctx), request))))
+    .RequireAuthorization();
+
+oauth.MapPost("/token", async (HttpContext ctx, OAuthService svc) =>
+{
+    if (!ctx.Request.HasFormContentType)
+        throw new ApiException("Content-Type deve ser application/x-www-form-urlencoded", 400);
+
+    var form = await ctx.Request.ReadFormAsync();
+    return Results.Json(await svc.ExchangeCodeAsync(form));
+});
+
+oauth.MapPost("/revoke", async (HttpContext ctx, OAuthService svc) =>
+{
+    if (!ctx.Request.HasFormContentType)
+        throw new ApiException("Content-Type deve ser application/x-www-form-urlencoded", 400);
+
+    var form = await ctx.Request.ReadFormAsync();
+    await svc.RevokeAsync(form);
+    return Results.Ok();
+});
+
 var users = app.MapGroup("/api/users").RequireAuthorization();
 
 users.MapGet("/me", async (HttpContext ctx, UserService svc) =>
@@ -492,22 +565,28 @@ presetMeals.MapPost("/{id:guid}/apply", async (Guid id, HttpContext ctx, ApplyPr
 });
 
 // MCP (AI integrations)
-var mcp = app.MapGroup("/api/mcp").RequireAuthorization();
+var mcp = app.MapGroup("/api/mcp");
 
-mcp.MapPost("/", async (HttpContext ctx, McpJsonRpcRequest request, McpService svc) =>
-    await svc.HandleAsync(request, GetUserId(ctx)));
+mcp.MapPost("/", async (HttpContext ctx, McpJsonRpcRequest request, McpService mcpSvc, OAuthService oauthSvc) =>
+{
+    var auth = await GetMcpRequestContextAsync(ctx, oauthSvc);
+    return await mcpSvc.HandleAsync(request, auth.UserId, auth.CanWrite);
+});
 
 mcp.MapGet("/meal-plan-access", async (HttpContext ctx, McpService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.GetMealPlanAccessAsync(GetUserId(ctx)))));
+    Results.Json(ApiResponses.Ok(await svc.GetMealPlanAccessAsync(GetUserId(ctx)))))
+    .RequireAuthorization();
 
 mcp.MapPut("/meal-plan-access/{planId:guid}", async (Guid planId, HttpContext ctx, UpdateMcpMealPlanAccessRequest request, McpService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateMealPlanAccessAsync(GetUserId(ctx), planId, request))));
+    Results.Json(ApiResponses.Ok(await svc.UpdateMealPlanAccessAsync(GetUserId(ctx), planId, request))))
+    .RequireAuthorization();
 
 mcp.MapDelete("/meal-plan-access/{planId:guid}", async (Guid planId, HttpContext ctx, McpService svc) =>
 {
     await svc.RemoveMealPlanAccessAsync(GetUserId(ctx), planId);
     return Results.Json(new ApiResponse(true, Message: "Acesso MCP removido"));
-});
+})
+    .RequireAuthorization();
 
 // ─── 404 Fallback ─────────────────────────────────────────
 app.MapFallback(() => Results.Json(new ApiResponse(false, Error: "Rota não encontrada"), statusCode: 404));

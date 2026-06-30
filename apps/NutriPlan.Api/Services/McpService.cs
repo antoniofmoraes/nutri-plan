@@ -17,7 +17,7 @@ public class McpService(
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<IResult> HandleAsync(McpJsonRpcRequest request, Guid userId)
+    public async Task<IResult> HandleAsync(McpJsonRpcRequest request, Guid userId, bool canWrite)
     {
         if (string.IsNullOrWhiteSpace(request.Method))
             return JsonRpcError(request.Id, -32600, "Requisicao MCP invalida");
@@ -31,7 +31,7 @@ public class McpService(
             {
                 "initialize" => Initialize(),
                 "tools/list" => ListTools(),
-                "tools/call" => await CallToolAsync(request.Params, userId),
+                "tools/call" => await CallToolAsync(request.Params, userId, canWrite),
                 _ => throw new McpProtocolException("Metodo MCP nao encontrado", -32601)
             };
 
@@ -236,7 +236,7 @@ public class McpService(
         }
     };
 
-    private async Task<object> CallToolAsync(JsonElement? parameters, Guid userId)
+    private async Task<object> CallToolAsync(JsonElement? parameters, Guid userId, bool canWrite)
     {
         var call = DeserializeParams<McpToolCallParams>(parameters);
 
@@ -245,11 +245,11 @@ public class McpService(
             "nutriplan_list_meal_plans" => await ListMealPlansAsync(userId),
             "nutriplan_get_meal_plan" => await GetMealPlanAsync(DeserializeArgs<McpPlanIdArgs>(call.Arguments), userId),
             "nutriplan_search_foods" => await SearchFoodsAsync(DeserializeArgs<McpSearchFoodsArgs>(call.Arguments)),
-            "nutriplan_update_meal_plan_targets" => await UpdateMealPlanTargetsAsync(DeserializeArgs<McpUpdateMealPlanArgs>(call.Arguments), userId),
-            "nutriplan_set_meal_cheat" => await SetMealCheatAsync(DeserializeArgs<McpSetMealCheatArgs>(call.Arguments), userId),
-            "nutriplan_add_food_to_meal" => await AddFoodToMealAsync(DeserializeArgs<McpAddFoodToMealArgs>(call.Arguments), userId),
-            "nutriplan_update_meal_food" => await UpdateMealFoodAsync(DeserializeArgs<McpUpdateMealFoodArgs>(call.Arguments), userId),
-            "nutriplan_remove_food_from_meal" => await RemoveFoodFromMealAsync(DeserializeArgs<McpRemoveFoodFromMealArgs>(call.Arguments), userId),
+            "nutriplan_update_meal_plan_targets" => await UpdateMealPlanTargetsAsync(DeserializeArgs<McpUpdateMealPlanArgs>(call.Arguments), userId, canWrite),
+            "nutriplan_set_meal_cheat" => await SetMealCheatAsync(DeserializeArgs<McpSetMealCheatArgs>(call.Arguments), userId, canWrite),
+            "nutriplan_add_food_to_meal" => await AddFoodToMealAsync(DeserializeArgs<McpAddFoodToMealArgs>(call.Arguments), userId, canWrite),
+            "nutriplan_update_meal_food" => await UpdateMealFoodAsync(DeserializeArgs<McpUpdateMealFoodArgs>(call.Arguments), userId, canWrite),
+            "nutriplan_remove_food_from_meal" => await RemoveFoodFromMealAsync(DeserializeArgs<McpRemoveFoodFromMealArgs>(call.Arguments), userId, canWrite),
             _ => throw new McpProtocolException("Ferramenta MCP nao encontrada", -32602)
         };
 
@@ -298,9 +298,9 @@ public class McpService(
         return await foodService.GetAllAsync(args.Search, page: 1, pageSize);
     }
 
-    private async Task<MealPlanResponse> UpdateMealPlanTargetsAsync(McpUpdateMealPlanArgs args, Guid userId)
+    private async Task<MealPlanResponse> UpdateMealPlanTargetsAsync(McpUpdateMealPlanArgs args, Guid userId, bool canWrite)
     {
-        await EnsurePlanMcpEditAccessAsync(args.PlanId, userId);
+        await EnsurePlanMcpEditAccessAsync(args.PlanId, userId, canWrite);
 
         return await mealPlanService.UpdateAsync(args.PlanId, userId, new UpdateMealPlanRequest
         {
@@ -313,17 +313,17 @@ public class McpService(
         });
     }
 
-    private async Task<MealResponse> SetMealCheatAsync(McpSetMealCheatArgs args, Guid userId)
+    private async Task<MealResponse> SetMealCheatAsync(McpSetMealCheatArgs args, Guid userId, bool canWrite)
     {
         var planId = await GetPlanIdForMealAsync(args.MealId);
-        await EnsurePlanMcpEditAccessAsync(planId, userId);
+        await EnsurePlanMcpEditAccessAsync(planId, userId, canWrite);
         return await mealService.SetCheatAsync(args.MealId, userId, args.IsCheat);
     }
 
-    private async Task<MealFoodResponse> AddFoodToMealAsync(McpAddFoodToMealArgs args, Guid userId)
+    private async Task<MealFoodResponse> AddFoodToMealAsync(McpAddFoodToMealArgs args, Guid userId, bool canWrite)
     {
         var planId = await GetPlanIdForMealAsync(args.MealId);
-        await EnsurePlanMcpEditAccessAsync(planId, userId);
+        await EnsurePlanMcpEditAccessAsync(planId, userId, canWrite);
         return await mealFoodService.AddFoodToMealAsync(args.MealId, userId, new AddFoodToMealRequest
         {
             FoodId = args.FoodId,
@@ -331,17 +331,17 @@ public class McpService(
         });
     }
 
-    private async Task<MealFoodResponse> UpdateMealFoodAsync(McpUpdateMealFoodArgs args, Guid userId)
+    private async Task<MealFoodResponse> UpdateMealFoodAsync(McpUpdateMealFoodArgs args, Guid userId, bool canWrite)
     {
         var planId = await GetPlanIdForMealAsync(args.MealId);
-        await EnsurePlanMcpEditAccessAsync(planId, userId);
+        await EnsurePlanMcpEditAccessAsync(planId, userId, canWrite);
         return await mealFoodService.UpdateMealFoodAsync(args.MealId, args.FoodId, userId, args.NewFoodId, args.Quantity);
     }
 
-    private async Task<object> RemoveFoodFromMealAsync(McpRemoveFoodFromMealArgs args, Guid userId)
+    private async Task<object> RemoveFoodFromMealAsync(McpRemoveFoodFromMealArgs args, Guid userId, bool canWrite)
     {
         var planId = await GetPlanIdForMealAsync(args.MealId);
-        await EnsurePlanMcpEditAccessAsync(planId, userId);
+        await EnsurePlanMcpEditAccessAsync(planId, userId, canWrite);
         await mealFoodService.RemoveFoodFromMealAsync(args.MealId, args.FoodId, userId);
         return new { message = "Alimento removido da refeicao" };
     }
@@ -353,8 +353,11 @@ public class McpService(
             throw new ApiException("Plano nao liberado para MCP", 403);
     }
 
-    private async Task EnsurePlanMcpEditAccessAsync(Guid planId, Guid userId)
+    private async Task EnsurePlanMcpEditAccessAsync(Guid planId, Guid userId, bool canWrite)
     {
+        if (!canWrite)
+            throw new ApiException("Token OAuth sem escopo de edicao MCP", 403);
+
         var access = await LoadMcpPlanAccessAsync(planId, userId);
         if (!access.CanEdit)
             throw new ApiException("Plano nao liberado para edicao MCP", 403);

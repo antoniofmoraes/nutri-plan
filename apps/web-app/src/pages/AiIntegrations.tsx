@@ -141,9 +141,9 @@ export default function AiIntegrations() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="eyebrow mb-2">Conexao</div>
-            <h2 className="text-[19px] font-semibold">Proximo passo: login seguro da IA</h2>
+            <h2 className="text-[19px] font-semibold">Login seguro da IA</h2>
             <p className="mt-1.5 max-w-[70ch] text-sm text-muted">
-              Esta tela ja prepara as permissoes. Para uso publico no ChatGPT ou Claude, ainda falta publicar a conexao com OAuth para o usuario autorizar a conta sem copiar token manualmente.
+              Esta tela controla as permissoes por plano. Quando um cliente compativel conectar, o NutriPlan usa OAuth para autorizar a conta sem copiar token manualmente.
             </p>
           </div>
           <div className="rounded-md border border-line bg-surface-alt px-3 py-2 font-mono text-[11.5px] text-muted">

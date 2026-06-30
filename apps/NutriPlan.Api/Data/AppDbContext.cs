@@ -18,6 +18,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PresetMeal> PresetMeals => Set<PresetMeal>();
     public DbSet<PresetMealFood> PresetMealFoods => Set<PresetMealFood>();
     public DbSet<McpMealPlanAccess> McpMealPlanAccesses => Set<McpMealPlanAccess>();
+    public DbSet<OAuthClient> OAuthClients => Set<OAuthClient>();
+    public DbSet<OAuthAuthorizationCode> OAuthAuthorizationCodes => Set<OAuthAuthorizationCode>();
+    public DbSet<OAuthAccessToken> OAuthAccessTokens => Set<OAuthAccessToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -155,6 +158,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(a => a.MealPlanId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<OAuthClient>(entity =>
+        {
+            entity.HasIndex(c => c.ClientId).IsUnique();
+        });
+
+        modelBuilder.Entity<OAuthAuthorizationCode>(entity =>
+        {
+            entity.HasIndex(c => c.CodeHash).IsUnique();
+            entity.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OAuthAccessToken>(entity =>
+        {
+            entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public override int SaveChanges()
@@ -205,6 +231,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 mcpAccess.UpdatedAt = DateTime.UtcNow;
                 if (entry.State == EntityState.Added)
                     mcpAccess.CreatedAt = DateTime.UtcNow;
+            }
+            else if (entry.Entity is OAuthClient oauthClient)
+            {
+                oauthClient.UpdatedAt = DateTime.UtcNow;
+                if (entry.State == EntityState.Added)
+                    oauthClient.CreatedAt = DateTime.UtcNow;
             }
         }
     }

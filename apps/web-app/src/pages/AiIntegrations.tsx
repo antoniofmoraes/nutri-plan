@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Bot, Check, Eye, LockKeyhole, Pencil, ShieldCheck, X } from 'lucide-react';
+import { Bot, Check, Eye, FileText, LockKeyhole, Pencil, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -63,12 +63,20 @@ export default function AiIntegrations() {
             Escolha quais planos uma IA autorizada pode consultar ou editar. O acesso fica desligado por padrao.
           </p>
         </div>
-        <Button variant="sec" asChild>
-          <Link to="/planos">
-            <Pencil size={16} />
-            Gerenciar planos
-          </Link>
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="sec" asChild>
+            <Link to="/integracoes-ia/instrucoes">
+              <FileText size={16} />
+              Instrucoes
+            </Link>
+          </Button>
+          <Button variant="sec" asChild>
+            <Link to="/planos">
+              <Pencil size={16} />
+              Gerenciar planos
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <section className="grid gap-3.5 md:grid-cols-3">

@@ -19,6 +19,7 @@ const ShoppingListDetail = lazy(() => import("@/pages/ShoppingListDetail"));
 const ShoppingListInvite = lazy(() => import("@/pages/ShoppingListInvite"));
 const PresetMeals = lazy(() => import("@/pages/PresetMeals"));
 const AiIntegrations = lazy(() => import("@/pages/AiIntegrations"));
+const AiIntegrationInstructions = lazy(() => import("@/pages/AiIntegrationInstructions"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ function AppRoutes() {
       <Route path="/listas-compras/aceitar/:token" element={<ProtectedRoute><ShoppingListInvite /></ProtectedRoute>} />
       <Route path="/listas-compras/:id" element={<ProtectedRoute><ShoppingListDetail /></ProtectedRoute>} />
       <Route path="/integracoes-ia" element={<ProtectedRoute><AiIntegrations /></ProtectedRoute>} />
+      <Route path="/integracoes-ia/instrucoes" element={<ProtectedRoute><AiIntegrationInstructions /></ProtectedRoute>} />
       <Route path="*" element={<Suspense fallback={<FullScreenLoading />}><NotFound /></Suspense>} />
     </Routes>
   );

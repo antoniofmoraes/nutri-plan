@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ShoppingListMeal> ShoppingListMeals => Set<ShoppingListMeal>();
     public DbSet<PresetMeal> PresetMeals => Set<PresetMeal>();
     public DbSet<PresetMealFood> PresetMealFoods => Set<PresetMealFood>();
+    public DbSet<McpMealPlanAccess> McpMealPlanAccesses => Set<McpMealPlanAccess>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -141,6 +142,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(pmf => pmf.FoodId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<McpMealPlanAccess>(entity =>
+        {
+            entity.HasIndex(a => new { a.UserId, a.MealPlanId }).IsUnique();
+            entity.HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.MealPlan)
+                .WithMany()
+                .HasForeignKey(a => a.MealPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public override int SaveChanges()
@@ -185,6 +199,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 preset.UpdatedAt = DateTime.UtcNow;
                 if (entry.State == EntityState.Added)
                     preset.CreatedAt = DateTime.UtcNow;
+            }
+            else if (entry.Entity is McpMealPlanAccess mcpAccess)
+            {
+                mcpAccess.UpdatedAt = DateTime.UtcNow;
+                if (entry.State == EntityState.Added)
+                    mcpAccess.CreatedAt = DateTime.UtcNow;
             }
         }
     }

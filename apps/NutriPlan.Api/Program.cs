@@ -160,6 +160,7 @@ builder.Services.AddScoped<MealFoodService>();
 builder.Services.AddScoped<ShoppingListService>();
 builder.Services.AddScoped<PresetMealService>();
 builder.Services.AddScoped<MealPlanExportService>();
+builder.Services.AddScoped<McpService>();
 
 // JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -488,6 +489,24 @@ presetMeals.MapPost("/{id:guid}/apply", async (Guid id, HttpContext ctx, ApplyPr
 {
     await svc.ApplyAsync(id, GetUserId(ctx), request.TargetMealIds);
     return Results.Json(new ApiResponse(true, Message: "Refeição pronta aplicada"));
+});
+
+// MCP (AI integrations)
+var mcp = app.MapGroup("/api/mcp").RequireAuthorization();
+
+mcp.MapPost("/", async (HttpContext ctx, McpJsonRpcRequest request, McpService svc) =>
+    await svc.HandleAsync(request, GetUserId(ctx)));
+
+mcp.MapGet("/meal-plan-access", async (HttpContext ctx, McpService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.GetMealPlanAccessAsync(GetUserId(ctx)))));
+
+mcp.MapPut("/meal-plan-access/{planId:guid}", async (Guid planId, HttpContext ctx, UpdateMcpMealPlanAccessRequest request, McpService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateMealPlanAccessAsync(GetUserId(ctx), planId, request))));
+
+mcp.MapDelete("/meal-plan-access/{planId:guid}", async (Guid planId, HttpContext ctx, McpService svc) =>
+{
+    await svc.RemoveMealPlanAccessAsync(GetUserId(ctx), planId);
+    return Results.Json(new ApiResponse(true, Message: "Acesso MCP removido"));
 });
 
 // ─── 404 Fallback ─────────────────────────────────────────

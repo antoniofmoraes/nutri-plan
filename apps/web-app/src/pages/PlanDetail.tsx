@@ -98,9 +98,23 @@ export default function PlanDetail() {
     if (!targetMealId) return;
     await addFoodToMeal(targetMealId, food, quantity);
   };
+  const handleDropFood = async (mealId: string, food: Food, quantity: number) => {
+    try {
+      await addFoodToMeal(mealId, food, quantity);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar alimento');
+    }
+  };
   const handleApplyPreset = async (presetId: string) => {
     if (!targetMealId) return;
     await applyPreset(presetId, [targetMealId]);
+  };
+  const handleApplyPresetToMeal = async (mealId: string, presetId: string) => {
+    try {
+      await applyPreset(presetId, [mealId]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao aplicar refeição');
+    }
   };
   const handleRemoveFood = async (mealId: string, foodId: string) => {
     await removeFoodFromMeal(mealId, foodId);
@@ -291,10 +305,13 @@ export default function PlanDetail() {
           readOnly={!canEditPlan}
           day={selectedDay}
           foods={foods}
+          presetMeals={presetMeals}
           onChangeDay={setSelectedDay}
           onAddFood={handleOpenFoodDialog}
           onRemoveFood={handleRemoveFood}
           onUpdateFood={handleUpdateFood}
+          onDropFood={handleDropFood}
+          onApplyPresetToMeal={handleApplyPresetToMeal}
           onToggleCheat={handleToggleCheat}
           calculateDayMacros={(d) => calculateDayMacros(d, plan)}
           calculateMealMacros={(m) => calculateMealMacros(m, plan)}

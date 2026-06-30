@@ -1,19 +1,42 @@
-import type { Meal, DayPlan, MealPlan, MacroSummary } from "@/types";
+import type { Meal, DayPlan, MealPlan, MacroSummary, Food } from "@/types";
 
 const ZERO: MacroSummary = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
-export function calculateFoodsMacros(
-  foods: ReadonlyArray<{ food: { calories: number; protein: number; carbs: number; fat: number }; quantity: number }>
+export function getFoodPortionGrams(portion?: string): number {
+  const match = portion?.match(/(\d+(?:[.,]\d+)?)\s*(?:g|grama|gramas)\b/i);
+  if (!match) return 100;
+
+  const grams = Number(match[1].replace(",", "."));
+  return Number.isFinite(grams) && grams > 0 ? grams : 100;
+}
+
+export function calculateFoodMacros(
+  food: Pick<Food, "calories" | "protein" | "carbs" | "fat" | "portion">,
+  quantity: number
 ): MacroSummary {
-  return foods.reduce(
-    (acc, { food, quantity }) => ({
-      calories: acc.calories + (food.calories * quantity) / 100,
-      protein: acc.protein + (food.protein * quantity) / 100,
-      carbs: acc.carbs + (food.carbs * quantity) / 100,
-      fat: acc.fat + (food.fat * quantity) / 100,
-    }),
-    { ...ZERO }
-  );
+  const ratio = quantity / getFoodPortionGrams(food.portion);
+  return {
+    calories: food.calories * ratio,
+    protein: food.protein * ratio,
+    carbs: food.carbs * ratio,
+    fat: food.fat * ratio,
+  };
+}
+
+export function calculateFoodsMacros(
+  foods: ReadonlyArray<{
+    food: Pick<Food, "calories" | "protein" | "carbs" | "fat" | "portion">;
+    quantity: number;
+  }>
+): MacroSummary {
+  return foods.reduce((acc, { food, quantity }) => {
+    const macros = calculateFoodMacros(food, quantity);
+    acc.calories += macros.calories;
+    acc.protein += macros.protein;
+    acc.carbs += macros.carbs;
+    acc.fat += macros.fat;
+    return acc;
+  }, { ...ZERO });
 }
 
 export function calculateRawMealMacros(meal: Meal): MacroSummary {

@@ -67,7 +67,9 @@ export function FoodSearchPopover({
                 }`}
               >
                 <div className="font-medium truncate">{food.name}</div>
-                <div className="mono text-[10.5px] text-muted mt-0.5">{food.calories} kcal/100g</div>
+                <div className="mono text-[10.5px] text-muted mt-0.5">
+                  {food.calories} kcal/{food.portion || '100g'}
+                </div>
               </button>
             ))
           )}

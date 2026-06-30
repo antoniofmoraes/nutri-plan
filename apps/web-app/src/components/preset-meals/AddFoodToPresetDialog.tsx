@@ -6,6 +6,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { FoodSearchPopover } from '@/components/shared/FoodSearchPopover';
+import { getFoodPortionGrams } from '@/lib/macros';
+import { parseDecimalInput } from '@/lib/utils';
 import type { Food } from '@/types';
 
 interface AddFoodToPresetDialogProps {
@@ -23,6 +25,8 @@ export function AddFoodToPresetDialog({
 }: AddFoodToPresetDialogProps) {
   const [selectedFoodId, setSelectedFoodId] = useState('');
   const [foodQuantity, setFoodQuantity] = useState('100');
+  const parsedFoodQuantity = parseDecimalInput(foodQuantity);
+  const hasValidFoodQuantity = parsedFoodQuantity !== null && parsedFoodQuantity > 0;
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -34,8 +38,8 @@ export function AddFoodToPresetDialog({
 
   const handleAdd = () => {
     const food = foods.find(f => f.id === selectedFoodId);
-    if (!food) return;
-    onAddFood(food, Number(foodQuantity));
+    if (!food || !hasValidFoodQuantity) return;
+    onAddFood(food, parsedFoodQuantity);
     handleOpenChange(false);
   };
 
@@ -54,17 +58,22 @@ export function AddFoodToPresetDialog({
             <FoodSearchPopover
               foods={foods}
               selectedFoodId={selectedFoodId}
-              onSelect={setSelectedFoodId}
+              onSelect={(foodId) => {
+                setSelectedFoodId(foodId);
+                const food = foods.find(item => item.id === foodId);
+                if (food) setFoodQuantity(String(getFoodPortionGrams(food.portion)));
+              }}
             />
           </div>
           <div>
             <label className="label-mono">Quantidade (gramas)</label>
             <Input
-              type="number"
+              type="text"
               inputMode="decimal"
               placeholder="100"
               value={foodQuantity}
               onChange={(e) => setFoodQuantity(e.target.value)}
+              aria-invalid={foodQuantity.length > 0 && !hasValidFoodQuantity}
             />
           </div>
         </DialogBody>
@@ -72,7 +81,7 @@ export function AddFoodToPresetDialog({
           <DialogClose asChild>
             <Button variant="ghost">Cancelar</Button>
           </DialogClose>
-          <Button variant="acc" onClick={handleAdd} disabled={!selectedFoodId}>
+          <Button variant="acc" onClick={handleAdd} disabled={!selectedFoodId || !hasValidFoodQuantity}>
             Adicionar
           </Button>
         </DialogFooter>

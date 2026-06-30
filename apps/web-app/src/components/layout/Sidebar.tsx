@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   LogOut,
   Menu,
+  Bot,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Alimentos', href: '/alimentos', icon: Wheat },
   { name: 'Refeições prontas', href: '/refeicoes-prontas', icon: ListChecks },
   { name: 'Listas de compras', href: '/listas-compras', icon: ShoppingCart },
+  { name: 'Integracoes IA', href: '/integracoes-ia', icon: Bot },
 ];
 
 function SidebarBody({

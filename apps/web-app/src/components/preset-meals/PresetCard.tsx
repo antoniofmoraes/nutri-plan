@@ -3,7 +3,7 @@ import { Plus, Edit, Trash2, X, ChevronDown, ChevronUp, Send, Search, Copy } fro
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { calculateFoodsMacros } from '@/lib/macros';
+import { calculateFoodMacros, calculateFoodsMacros } from '@/lib/macros';
 import type { PresetMeal, Food } from '@/types';
 
 interface PresetCardProps {
@@ -129,7 +129,9 @@ function InlineFoodSwap({
                 }`}
               >
                 <div className="font-medium truncate">{food.name}</div>
-                <div className="mono text-[10.5px] text-muted mt-0.5">{food.calories} kcal/100g</div>
+                <div className="mono text-[10.5px] text-muted mt-0.5">
+                  {food.calories} kcal/{food.portion || '100g'}
+                </div>
               </button>
             ))
           )}
@@ -205,33 +207,36 @@ export function PresetCard({
           {preset.foods.length === 0 ? (
             <div className="p-4 text-[13px] text-muted italic">Nenhum alimento adicionado</div>
           ) : (
-            preset.foods.map(({ food, quantity }) => (
-              <div key={food.id} className="flex items-center justify-between px-4 py-2.5 border-b border-line last:border-b-0 group">
-                <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                  <InlineFoodSwap
-                    currentFood={food}
-                    allFoods={allFoods}
-                    onSwap={(newFoodId) => onUpdateFood(food.id, { newFoodId })}
-                  />
-                  <InlineQuantityEdit
-                    quantity={quantity}
-                    onSave={(newQty) => onUpdateFood(food.id, { quantity: newQty })}
-                  />
-                  <div className="mono inline-flex gap-2 text-[12px] font-medium">
-                    <span className="num" style={{ color: 'var(--m-cal)' }}>{(food.calories * quantity / 100).toFixed(0)} kcal</span>
-                    <span style={{ color: 'var(--m-prot)' }}>P {(food.protein * quantity / 100).toFixed(0)}g</span>
-                    <span style={{ color: 'var(--m-carb)' }}>C {(food.carbs * quantity / 100).toFixed(0)}g</span>
-                    <span style={{ color: 'var(--m-fat)' }}>G {(food.fat * quantity / 100).toFixed(0)}g</span>
+            preset.foods.map(({ food, quantity }) => {
+              const foodMacros = calculateFoodMacros(food, quantity);
+              return (
+                <div key={food.id} className="flex items-center justify-between px-4 py-2.5 border-b border-line last:border-b-0 group">
+                  <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                    <InlineFoodSwap
+                      currentFood={food}
+                      allFoods={allFoods}
+                      onSwap={(newFoodId) => onUpdateFood(food.id, { newFoodId })}
+                    />
+                    <InlineQuantityEdit
+                      quantity={quantity}
+                      onSave={(newQty) => onUpdateFood(food.id, { quantity: newQty })}
+                    />
+                    <div className="mono inline-flex gap-2 text-[12px] font-medium">
+                      <span className="num" style={{ color: 'var(--m-cal)' }}>{foodMacros.calories.toFixed(0)} kcal</span>
+                      <span style={{ color: 'var(--m-prot)' }}>P {foodMacros.protein.toFixed(0)}g</span>
+                      <span style={{ color: 'var(--m-carb)' }}>C {foodMacros.carbs.toFixed(0)}g</span>
+                      <span style={{ color: 'var(--m-fat)' }}>G {foodMacros.fat.toFixed(0)}g</span>
+                    </div>
                   </div>
+                  <button
+                    className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-120"
+                    onClick={() => onRemoveFood(food.id)}
+                  >
+                    <X size={13} strokeWidth={1.6} />
+                  </button>
                 </div>
-                <button
-                  className="w-[26px] h-[26px] rounded-sm grid place-items-center text-muted hover:bg-surface-alt hover:text-danger opacity-0 group-hover:opacity-100 transition-[background,color,opacity] duration-120"
-                  onClick={() => onRemoveFood(food.id)}
-                >
-                  <X size={13} strokeWidth={1.6} />
-                </button>
-              </div>
-            ))
+              );
+            })
           )}
           <div className="p-3">
             <Button

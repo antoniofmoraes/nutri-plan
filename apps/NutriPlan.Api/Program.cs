@@ -214,15 +214,91 @@ static async Task<(Guid UserId, bool CanWrite)> GetMcpRequestContextAsync(HttpCo
 
     var authHeader = ctx.Request.Headers.Authorization.ToString();
     if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        ctx.Response.Headers.Append(
+            "WWW-Authenticate",
+            $"Bearer resource_metadata=\"{GetPublicOrigin(ctx)}/.well-known/oauth-protected-resource/api/mcp\"");
         throw new ApiException("Token nao fornecido", 401);
+    }
 
     var token = authHeader["Bearer ".Length..].Trim();
     var validation = await oauthSvc.ValidateAccessTokenAsync(token, "mcp:read");
     return (validation.UserId, validation.Scopes.Contains("mcp:write"));
 }
 
+static string GetPublicOrigin(HttpContext ctx)
+{
+    var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
+    var configuredOrigin = config["PUBLIC_BASE_URL"] ?? config["PUBLIC_APP_URL"] ?? config["APP_PUBLIC_URL"];
+    if (!string.IsNullOrWhiteSpace(configuredOrigin))
+        return configuredOrigin.Trim().TrimEnd('/');
+
+    var forwardedProto = ctx.Request.Headers["X-Forwarded-Proto"].ToString()
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .FirstOrDefault();
+    var forwardedHost = ctx.Request.Headers["X-Forwarded-Host"].ToString()
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .FirstOrDefault();
+
+    var scheme = string.IsNullOrWhiteSpace(forwardedProto) ? ctx.Request.Scheme : forwardedProto;
+    var host = string.IsNullOrWhiteSpace(forwardedHost) ? ctx.Request.Host.Value : forwardedHost;
+
+    if (ctx.Request.Headers["X-Forwarded-Ssl"].ToString().Equals("on", StringComparison.OrdinalIgnoreCase))
+        scheme = "https";
+
+    return $"{scheme}://{host}".TrimEnd('/');
+}
+
+static object GetOAuthAuthorizationServerMetadata(HttpContext ctx)
+{
+    var origin = GetPublicOrigin(ctx);
+
+    return new
+    {
+        issuer = origin,
+        authorization_endpoint = $"{origin}/oauth/authorize",
+        token_endpoint = $"{origin}/api/oauth/token",
+        registration_endpoint = $"{origin}/api/oauth/register",
+        revocation_endpoint = $"{origin}/api/oauth/revoke",
+        scopes_supported = new[] { "mcp:read", "mcp:write" },
+        response_types_supported = new[] { "code" },
+        grant_types_supported = new[] { "authorization_code" },
+        code_challenge_methods_supported = new[] { "S256" },
+        token_endpoint_auth_methods_supported = new[] { "none" },
+        service_documentation = $"{origin}/integracoes-ia/instrucoes",
+        protected_resources = new[] { $"{origin}/api/mcp" }
+    };
+}
+
+static object GetOAuthProtectedResourceMetadata(HttpContext ctx)
+{
+    var origin = GetPublicOrigin(ctx);
+
+    return new
+    {
+        resource = $"{origin}/api/mcp",
+        resource_name = "NutriPlan MCP",
+        resource_documentation = $"{origin}/integracoes-ia/instrucoes",
+        authorization_servers = new[] { origin },
+        scopes_supported = new[] { "mcp:read", "mcp:write" },
+        bearer_methods_supported = new[] { "header" }
+    };
+}
+
 app.MapGet("/", () => Results.Json(new { success = true, message = "NutriPlan API", version = "1.0.0", timestamp = DateTime.UtcNow }));
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
+
+app.MapGet("/.well-known/oauth-authorization-server", (HttpContext ctx) =>
+    Results.Json(GetOAuthAuthorizationServerMetadata(ctx)));
+
+app.MapGet("/.well-known/openid-configuration", (HttpContext ctx) =>
+    Results.Json(GetOAuthAuthorizationServerMetadata(ctx)));
+
+app.MapGet("/.well-known/oauth-protected-resource", (HttpContext ctx) =>
+    Results.Json(GetOAuthProtectedResourceMetadata(ctx)));
+
+app.MapGet("/.well-known/oauth-protected-resource/{**resourcePath}", (HttpContext ctx) =>
+    Results.Json(GetOAuthProtectedResourceMetadata(ctx)));
 
 // ─── Auth ─────────────────────────────────────────────────
 var auth = app.MapGroup("/api/auth");
@@ -286,6 +362,10 @@ oauth.MapPost("/token", async (HttpContext ctx, OAuthService svc) =>
     var form = await ctx.Request.ReadFormAsync();
     return Results.Json(await svc.ExchangeCodeAsync(form));
 });
+
+oauth.MapPost("/register", async (OAuthClientRegistrationRequest request, OAuthService svc) =>
+    Results.Json(await svc.RegisterClientAsync(request), statusCode: 201))
+    .RequireRateLimiting("auth");
 
 oauth.MapPost("/revoke", async (HttpContext ctx, OAuthService svc) =>
 {

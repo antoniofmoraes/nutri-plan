@@ -15,6 +15,59 @@ public class OAuthService(AppDbContext db)
     private const int AccessTokenSeconds = 3600;
     private static readonly HashSet<string> SupportedScopes = ["mcp:read", "mcp:write"];
 
+    public async Task<OAuthClientRegistrationResponse> RegisterClientAsync(OAuthClientRegistrationRequest request)
+    {
+        if (request.RedirectUris.Count == 0)
+            throw new ApiException("redirect_uris e obrigatorio", 400);
+
+        if (request.TokenEndpointAuthMethod is not null && request.TokenEndpointAuthMethod != "none")
+            throw new ApiException("Apenas token_endpoint_auth_method none e suportado", 400);
+
+        if (request.GrantTypes is not null && request.GrantTypes.Any(type => type != "authorization_code"))
+            throw new ApiException("grant_types invalido", 400);
+
+        if (request.ResponseTypes is not null && request.ResponseTypes.Any(type => type != "code"))
+            throw new ApiException("response_types invalido", 400);
+
+        var redirectUris = request.RedirectUris
+            .Select(uri => uri.Trim())
+            .Where(uri => uri.Length > 0)
+            .Distinct()
+            .ToList();
+
+        if (redirectUris.Count == 0 || redirectUris.Any(uri => !IsSafeRedirectUri(uri)))
+            throw new ApiException("redirect_uris invalido", 400);
+
+        var scopes = ParseScopes(request.Scope);
+        if (scopes.Count == 0)
+            scopes.AddRange(["mcp:read", "mcp:write"]);
+
+        if (scopes.Any(scope => !SupportedScopes.Contains(scope)))
+            throw new ApiException("Escopo OAuth invalido", 400);
+        if (scopes.Contains("mcp:write") && !scopes.Contains("mcp:read"))
+            scopes.Insert(0, "mcp:read");
+
+        var client = new OAuthClient
+        {
+            ClientId = $"mcp_{GenerateToken()}",
+            Name = string.IsNullOrWhiteSpace(request.ClientName) ? "Cliente MCP" : request.ClientName.Trim(),
+            RedirectUris = string.Join('\n', redirectUris),
+            AllowedScopes = string.Join(' ', scopes)
+        };
+
+        db.OAuthClients.Add(client);
+        await db.SaveChangesAsync();
+
+        return new OAuthClientRegistrationResponse(
+            client.ClientId,
+            client.Name,
+            redirectUris,
+            client.AllowedScopes,
+            ["authorization_code"],
+            ["code"],
+            "none");
+    }
+
     public async Task<OAuthAuthorizePreviewResponse> PreviewAuthorizeAsync(
         string? responseType,
         string? clientId,
@@ -202,6 +255,18 @@ public class OAuthService(AppDbContext db)
         client.RedirectUris
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Any(uri => uri == redirectUri);
+
+    private static bool IsSafeRedirectUri(string redirectUri)
+    {
+        if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+            return false;
+
+        if (uri.Scheme == Uri.UriSchemeHttps)
+            return true;
+
+        return uri.Scheme == Uri.UriSchemeHttp
+            && (uri.IsLoopback || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
+    }
 
     private static List<string> ParseScopes(string? scope) =>
         (scope ?? "")

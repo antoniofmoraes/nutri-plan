@@ -98,11 +98,13 @@ export function calculateDayMacros(dayPlan: DayPlan, plan?: MealPlan): MacroSumm
 }
 
 export function calculatePlanMacros(plan: MealPlan): MacroSummary {
+  const averages = buildSlotAverages(plan);
   const total = plan.days.reduce(
     (acc, day) => {
       for (const meal of day.meals) {
-        if (meal.isCheat) continue;
-        const macros = calculateRawMealMacros(meal);
+        const macros = meal.isCheat
+          ? averages.get(meal.slotId) ?? ZERO
+          : calculateRawMealMacros(meal);
         acc.calories += macros.calories;
         acc.protein += macros.protein;
         acc.carbs += macros.carbs;

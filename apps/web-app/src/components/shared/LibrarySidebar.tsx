@@ -5,35 +5,47 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { calculateFoodMacros, calculateFoodsMacros, getFoodPortionGrams } from '@/lib/macros';
 import { cn } from '@/lib/utils';
 import type { Food, PresetMeal } from '@/types';
-import { encodePlanItemDragPayload, PLAN_ITEM_DRAG_TYPE } from './dragPayload';
+import { encodeLibraryItemDragPayload, LIBRARY_ITEM_DRAG_TYPE } from './dragPayload';
 
-interface PlanItemSidebarProps {
+interface LibrarySidebarProps {
   foods: Food[];
   presetMeals: PresetMeal[];
+  dropHint?: string;
   className?: string;
 }
 
 type LibraryMode = 'food' | 'preset';
 
-export function PlanItemSidebar({ foods, presetMeals, className }: PlanItemSidebarProps) {
+const MAX_VISIBLE_ITEMS = 80;
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+export function LibrarySidebar({ foods, presetMeals, dropHint, className }: LibrarySidebarProps) {
   const [mode, setMode] = useState<LibraryMode>('food');
   const [search, setSearch] = useState('');
-  const normalizedSearch = search.trim().toLowerCase();
+  const normalizedSearch = normalizeText(search.trim());
 
   const filteredFoods = useMemo(
     () =>
       foods
-        .filter((food) => food.name.toLowerCase().includes(normalizedSearch))
-        .slice(0, 80),
+        .filter((food) => normalizeText(food.name).includes(normalizedSearch))
+        .slice(0, MAX_VISIBLE_ITEMS),
     [foods, normalizedSearch]
   );
 
   const filteredPresets = useMemo(
     () =>
-      presetMeals.filter((preset) =>
-        preset.name.toLowerCase().includes(normalizedSearch) ||
-        preset.foods.some(({ food }) => food.name.toLowerCase().includes(normalizedSearch))
-      ),
+      presetMeals
+        .filter((preset) =>
+          normalizeText(preset.name).includes(normalizedSearch) ||
+          preset.foods.some(({ food }) => normalizeText(food.name).includes(normalizedSearch))
+        )
+        .slice(0, MAX_VISIBLE_ITEMS),
     [presetMeals, normalizedSearch]
   );
 
@@ -44,6 +56,9 @@ export function PlanItemSidebar({ foods, presetMeals, className }: PlanItemSideb
       <div>
         <div className="eyebrow">Biblioteca</div>
         <h2 className="text-[18px] font-semibold leading-tight">Alimentos e refeições</h2>
+        {dropHint && (
+          <p className="text-[12px] text-muted mt-1">{dropHint}</p>
+        )}
       </div>
 
       <div className="inline-flex bg-surface-alt border border-line rounded-[var(--r-md)] p-[3px] gap-0.5 w-full">
@@ -91,7 +106,7 @@ export function PlanItemSidebar({ foods, presetMeals, className }: PlanItemSideb
             Nenhum item encontrado.
           </div>
         ) : (
-          <div className="space-y-2 pr-3">
+          <div role="list" className="space-y-2 pr-3">
             {mode === 'food'
               ? filteredFoods.map((food) => <FoodDragItem key={food.id} food={food} />)
               : filteredPresets.map((preset) => <PresetDragItem key={preset.id} preset={preset} />)}
@@ -113,7 +128,7 @@ function FoodDragItem({ food }: { food: Food }) {
       draggable
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData(PLAN_ITEM_DRAG_TYPE, encodePlanItemDragPayload({ type: 'food', id: food.id }));
+        event.dataTransfer.setData(LIBRARY_ITEM_DRAG_TYPE, encodeLibraryItemDragPayload({ type: 'food', id: food.id }));
         event.dataTransfer.setData('text/plain', food.name);
       }}
       className="group rounded-[var(--r-md)] border border-line bg-surface px-3 py-2.5 cursor-grab active:cursor-grabbing transition-[background,border-color,box-shadow] duration-120 hover:bg-surface-alt hover:shadow-1 focus:outline-none focus:border-ink"
@@ -146,7 +161,7 @@ function PresetDragItem({ preset }: { preset: PresetMeal }) {
       draggable
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData(PLAN_ITEM_DRAG_TYPE, encodePlanItemDragPayload({ type: 'preset', id: preset.id }));
+        event.dataTransfer.setData(LIBRARY_ITEM_DRAG_TYPE, encodeLibraryItemDragPayload({ type: 'preset', id: preset.id }));
         event.dataTransfer.setData('text/plain', preset.name);
       }}
       className="group rounded-[var(--r-md)] border border-line bg-surface px-3 py-2.5 cursor-grab active:cursor-grabbing transition-[background,border-color,box-shadow] duration-120 hover:bg-surface-alt hover:shadow-1 focus:outline-none focus:border-ink"

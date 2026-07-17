@@ -83,6 +83,12 @@
     --line: #2a2720;
     --line-2: #3a362c;
     --accent-soft: #2b1a13;
+    --good: #55b465;
+    --warn: #d9a83c;
+    --danger: #e0563c;
+    --m-pro: #8b82ff;
+    --m-fat: #2fb3a6;
+    --m-fib: #8a8576;
     --shadow-1: none;
     --shadow-2: 0 8px 24px -10px rgba(0,0,0,.5);
     --shadow-3: 0 18px 40px -16px rgba(0,0,0,.7);

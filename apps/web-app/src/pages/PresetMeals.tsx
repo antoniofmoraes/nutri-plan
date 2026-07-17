@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Plus, BookCopy } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { usePresetMeals } from '@/hooks/usePresetMeals';
 import { useAllFoods } from '@/hooks/useFoods';
 import { useMealPlans } from '@/hooks/useMealPlans';
+import { getFoodPortionGrams } from '@/lib/macros';
 import type { PresetMeal, Food } from '@/types';
 import { PresetCard } from '@/components/preset-meals/PresetCard';
 import { PresetNameDialog } from '@/components/preset-meals/PresetNameDialog';
@@ -11,6 +13,8 @@ import { AddFoodToPresetDialog } from '@/components/preset-meals/AddFoodToPreset
 import { ApplyPresetDialog } from '@/components/preset-meals/ApplyPresetDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { LibrarySidebar } from '@/components/shared/LibrarySidebar';
+import type { LibraryItemDragPayload } from '@/components/shared/dragPayload';
 
 export default function PresetMeals() {
   const {
@@ -76,6 +80,31 @@ export default function PresetMeals() {
     setApplyPresetId(null);
   };
 
+  const handleDropItem = async (target: PresetMeal, payload: LibraryItemDragPayload) => {
+    try {
+      if (payload.type === 'food') {
+        const food = foods.find((item) => item.id === payload.id);
+        if (!food) return;
+        await addFoodToPreset(target.id, food, getFoodPortionGrams(food.portion));
+      } else {
+        if (payload.id === target.id) return;
+        const source = presetMeals.find((preset) => preset.id === payload.id);
+        if (!source) return;
+        if (source.foods.length === 0) {
+          toast.info('A refeição arrastada não tem alimentos para copiar');
+          return;
+        }
+        for (const { food, quantity } of source.foods) {
+          await addFoodToPreset(target.id, food, quantity);
+        }
+        toast.success(`Itens de "${source.name}" copiados para "${target.name}"`);
+      }
+      setExpandedId(target.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar itens');
+    }
+  };
+
   return (
     <div className="space-y-7">
       {/* Header */}
@@ -109,24 +138,32 @@ export default function PresetMeals() {
           }
         />
       ) : (
-        <div className="space-y-3">
-          {presetMeals.map((preset) => (
-            <PresetCard
-              key={preset.id}
-              preset={preset}
-              isExpanded={expandedId === preset.id}
-              canApply={mealPlans.length > 0}
-              allFoods={foods}
-              onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
-              onDuplicate={() => duplicatePresetMeal(preset.id)}
-              onEdit={() => handleOpenEdit(preset)}
-              onDelete={() => setDeleteTarget(preset.id)}
-              onAddFood={() => setFoodDialogPresetId(preset.id)}
-              onRemoveFood={(foodId) => removeFoodFromPreset(preset.id, foodId)}
-              onUpdateFood={(foodId, updates) => updateFoodInPreset(preset.id, foodId, updates)}
-              onApply={() => setApplyPresetId(preset.id)}
-            />
-          ))}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="space-y-3 min-w-0">
+            {presetMeals.map((preset) => (
+              <PresetCard
+                key={preset.id}
+                preset={preset}
+                isExpanded={expandedId === preset.id}
+                canApply={mealPlans.length > 0}
+                allFoods={foods}
+                onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
+                onDuplicate={() => duplicatePresetMeal(preset.id)}
+                onEdit={() => handleOpenEdit(preset)}
+                onDelete={() => setDeleteTarget(preset.id)}
+                onAddFood={() => setFoodDialogPresetId(preset.id)}
+                onRemoveFood={(foodId) => removeFoodFromPreset(preset.id, foodId)}
+                onUpdateFood={(foodId, updates) => updateFoodInPreset(preset.id, foodId, updates)}
+                onApply={() => setApplyPresetId(preset.id)}
+                onDropItem={(payload) => handleDropItem(preset, payload)}
+              />
+            ))}
+          </div>
+          <LibrarySidebar
+            foods={foods}
+            presetMeals={presetMeals}
+            dropHint="Arraste um item para uma refeição pronta para adicioná-lo."
+          />
         </div>
       )}
 

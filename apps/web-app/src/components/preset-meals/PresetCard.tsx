@@ -1,9 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type DragEvent } from 'react';
 import { Plus, Edit, Trash2, X, ChevronDown, ChevronUp, Send, Search, Copy } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { calculateFoodMacros, calculateFoodsMacros } from '@/lib/macros';
+import {
+  hasLibraryItemDragPayload,
+  parseLibraryItemDragPayload,
+  LIBRARY_ITEM_DRAG_TYPE,
+  type LibraryItemDragPayload,
+} from '@/components/shared/dragPayload';
+import { cn } from '@/lib/utils';
 import type { PresetMeal, Food } from '@/types';
 
 interface PresetCardProps {
@@ -19,6 +27,7 @@ interface PresetCardProps {
   onUpdateFood: (foodId: string, updates: { newFoodId?: string; quantity?: number }) => void;
   onDuplicate: () => void;
   onApply: () => void;
+  onDropItem?: (payload: LibraryItemDragPayload) => void;
 }
 
 function InlineQuantityEdit({ quantity, onSave }: { quantity: number; onSave: (v: number) => void }) {
@@ -154,11 +163,42 @@ export function PresetCard({
   onUpdateFood,
   onDuplicate,
   onApply,
+  onDropItem,
 }: PresetCardProps) {
   const macros = calculateFoodsMacros(preset.foods);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!onDropItem || !hasLibraryItemDragPayload(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    setIsDragOver(false);
+    if (!onDropItem) return;
+    event.preventDefault();
+    const payload = parseLibraryItemDragPayload(event.dataTransfer.getData(LIBRARY_ITEM_DRAG_TYPE));
+    if (payload) onDropItem(payload);
+  };
 
   return (
-    <div className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        'bg-surface border border-line rounded-lg shadow-1 overflow-hidden transition-[background,border-color,box-shadow] duration-120',
+        isDragOver && 'border-ink bg-surface-alt shadow-2'
+      )}
+    >
       <div className="px-4 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div
@@ -170,6 +210,7 @@ export function PresetCard({
               {isExpanded
                 ? <ChevronUp size={15} className="text-muted flex-shrink-0" />
                 : <ChevronDown size={15} className="text-muted flex-shrink-0" />}
+              {isDragOver && <Badge variant="solid">Soltar</Badge>}
             </div>
             <div className="mono inline-flex gap-2 mt-1 text-[11.5px] text-muted flex-wrap">
               <span className="num font-medium" style={{ color: 'var(--m-cal)' }}>{macros.calories.toFixed(0)} kcal</span>
@@ -193,10 +234,10 @@ export function PresetCard({
             <Button variant="ghost" size="icon-sm" onClick={onDuplicate} title="Duplicar">
               <Copy size={14} strokeWidth={1.6} />
             </Button>
-            <Button variant="ghost" size="icon-sm" onClick={onEdit}>
+            <Button variant="ghost" size="icon-sm" onClick={onEdit} title="Renomear">
               <Edit size={14} strokeWidth={1.6} />
             </Button>
-            <Button variant="ghost" size="icon-sm" className="hover:text-danger" onClick={onDelete}>
+            <Button variant="ghost" size="icon-sm" className="hover:text-danger" onClick={onDelete} title="Excluir">
               <Trash2 size={14} strokeWidth={1.6} />
             </Button>
           </div>
@@ -223,7 +264,7 @@ export function PresetCard({
                     />
                     <div className="mono inline-flex gap-2 text-[12px] font-medium">
                       <span className="num" style={{ color: 'var(--m-cal)' }}>{foodMacros.calories.toFixed(0)} kcal</span>
-                      <span style={{ color: 'var(--m-prot)' }}>P {foodMacros.protein.toFixed(0)}g</span>
+                      <span style={{ color: 'var(--m-pro)' }}>P {foodMacros.protein.toFixed(0)}g</span>
                       <span style={{ color: 'var(--m-carb)' }}>C {foodMacros.carbs.toFixed(0)}g</span>
                       <span style={{ color: 'var(--m-fat)' }}>G {foodMacros.fat.toFixed(0)}g</span>
                     </div>

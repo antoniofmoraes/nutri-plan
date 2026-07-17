@@ -6,8 +6,8 @@ import { getFoodPortionGrams } from '@/lib/macros';
 import type { Food, Meal, PresetMeal, WeekDay } from '@/types';
 import { weekDays, type ViewProps } from './types';
 import { EditableFoodRow } from './EditableFoodRow';
-import { PlanItemSidebar } from './PlanItemSidebar';
-import { parsePlanItemDragPayload, PLAN_ITEM_DRAG_TYPE } from './dragPayload';
+import { LibrarySidebar } from '@/components/shared/LibrarySidebar';
+import { hasLibraryItemDragPayload, parseLibraryItemDragPayload, LIBRARY_ITEM_DRAG_TYPE } from '@/components/shared/dragPayload';
 import { cn } from '@/lib/utils';
 
 interface DayViewProps extends ViewProps {
@@ -54,13 +54,10 @@ export function DayView({
     { key: 'f', label: 'Gordura', value: dayMacros.fat, target: target.f, unit: 'g', color: 'var(--m-fat)' },
   ];
 
-  const hasPlanDragPayload = (event: DragEvent<HTMLElement>) =>
-    Array.from(event.dataTransfer.types).includes(PLAN_ITEM_DRAG_TYPE);
-
   const canDropOnMeal = (meal: Meal) => !readOnly && !meal.isCheat;
 
   const handleMealDragOver = (event: DragEvent<HTMLDivElement>, meal: Meal) => {
-    if (!canDropOnMeal(meal) || !hasPlanDragPayload(event)) return;
+    if (!canDropOnMeal(meal) || !hasLibraryItemDragPayload(event.dataTransfer)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
     setDragOverMealId(meal.id);
@@ -77,7 +74,7 @@ export function DayView({
     event.preventDefault();
     setDragOverMealId(null);
 
-    const payload = parsePlanItemDragPayload(event.dataTransfer.getData(PLAN_ITEM_DRAG_TYPE));
+    const payload = parseLibraryItemDragPayload(event.dataTransfer.getData(LIBRARY_ITEM_DRAG_TYPE));
     if (!payload) return;
 
     if (payload.type === 'food') {
@@ -278,9 +275,10 @@ export function DayView({
         </div>
 
         {!readOnly && (
-          <PlanItemSidebar
+          <LibrarySidebar
             foods={foods}
             presetMeals={presetMeals}
+            dropHint="Arraste um item para uma refeição do dia."
           />
         )}
       </div>

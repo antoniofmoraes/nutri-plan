@@ -29,6 +29,14 @@ public class OAuthAccessToken
     [Column("expiresAt")]
     public DateTime ExpiresAt { get; set; }
 
+    // O refresh vive na mesma linha do access token que ele renova. Renovar revoga a linha
+    // inteira e emite outra (rotação), então um refresh usado duas vezes não vale nada.
+    [Column("refreshTokenHash")]
+    public string? RefreshTokenHash { get; set; }
+
+    [Column("refreshExpiresAt")]
+    public DateTime? RefreshExpiresAt { get; set; }
+
     [Column("revokedAt")]
     public DateTime? RevokedAt { get; set; }
 

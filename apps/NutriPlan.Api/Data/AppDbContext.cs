@@ -186,6 +186,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<OAuthAccessToken>(entity =>
         {
             entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasIndex(t => t.RefreshTokenHash).IsUnique().HasFilter("\"refreshTokenHash\" IS NOT NULL");
             entity.HasOne(t => t.User)
                 .WithMany()
                 .HasForeignKey(t => t.UserId)

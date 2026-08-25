@@ -263,7 +263,7 @@ static object GetOAuthAuthorizationServerMetadata(HttpContext ctx)
         revocation_endpoint = $"{origin}/api/oauth/revoke",
         scopes_supported = new[] { "mcp:read", "mcp:write" },
         response_types_supported = new[] { "code" },
-        grant_types_supported = new[] { "authorization_code" },
+        grant_types_supported = new[] { "authorization_code", "refresh_token" },
         code_challenge_methods_supported = new[] { "S256" },
         token_endpoint_auth_methods_supported = new[] { "none" },
         service_documentation = $"{origin}/integracoes-ia/instrucoes",

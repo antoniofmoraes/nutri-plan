@@ -13,6 +13,7 @@ public class OAuthService(AppDbContext db)
 {
     private const int AuthorizationCodeMinutes = 10;
     private const int AccessTokenSeconds = 3600;
+    private const int RefreshTokenDays = 30;
     private static readonly HashSet<string> SupportedScopes = ["mcp:read", "mcp:write"];
 
     public async Task<OAuthClientRegistrationResponse> RegisterClientAsync(OAuthClientRegistrationRequest request)
@@ -23,7 +24,7 @@ public class OAuthService(AppDbContext db)
         if (request.TokenEndpointAuthMethod is not null && request.TokenEndpointAuthMethod != "none")
             throw new ApiException("Apenas token_endpoint_auth_method none e suportado", 400);
 
-        if (request.GrantTypes is not null && request.GrantTypes.Any(type => type != "authorization_code"))
+        if (request.GrantTypes is not null && request.GrantTypes.Any(type => type is not ("authorization_code" or "refresh_token")))
             throw new ApiException("grant_types invalido", 400);
 
         if (request.ResponseTypes is not null && request.ResponseTypes.Any(type => type != "code"))
@@ -63,7 +64,7 @@ public class OAuthService(AppDbContext db)
             client.Name,
             redirectUris,
             client.AllowedScopes,
-            ["authorization_code"],
+            ["authorization_code", "refresh_token"],
             ["code"],
             "none");
     }
@@ -129,16 +130,24 @@ public class OAuthService(AppDbContext db)
         return new OAuthAuthorizeConfirmResponse(QueryHelpers.AddQueryString(validated.RedirectUri, query));
     }
 
-    public async Task<OAuthTokenResponse> ExchangeCodeAsync(IFormCollection form)
+    public Task<OAuthTokenResponse> ExchangeCodeAsync(IFormCollection form)
     {
         var grantType = form["grant_type"].ToString();
+        return grantType switch
+        {
+            "authorization_code" => ExchangeAuthorizationCodeAsync(form),
+            "refresh_token" => RefreshAsync(form),
+            _ => throw new ApiException("grant_type invalido", 400),
+        };
+    }
+
+    private async Task<OAuthTokenResponse> ExchangeAuthorizationCodeAsync(IFormCollection form)
+    {
         var code = form["code"].ToString();
         var redirectUri = form["redirect_uri"].ToString();
         var clientId = form["client_id"].ToString();
         var codeVerifier = form["code_verifier"].ToString();
 
-        if (grantType != "authorization_code")
-            throw new ApiException("grant_type invalido", 400);
         if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(redirectUri) || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(codeVerifier))
             throw new ApiException("Parametros OAuth obrigatorios", 400);
 
@@ -159,19 +168,53 @@ public class OAuthService(AppDbContext db)
 
         authorizationCode.UsedAt = DateTime.UtcNow;
 
+        return await IssueTokenPairAsync(client.ClientId, authorizationCode.UserId, authorizationCode.Scope);
+    }
+
+    private async Task<OAuthTokenResponse> RefreshAsync(IFormCollection form)
+    {
+        var refreshToken = form["refresh_token"].ToString();
+        var clientId = form["client_id"].ToString();
+
+        if (string.IsNullOrWhiteSpace(refreshToken) || string.IsNullOrWhiteSpace(clientId))
+            throw new ApiException("Parametros OAuth obrigatorios", 400);
+
+        var refreshHash = HashSecret(refreshToken);
+        var current = await db.OAuthAccessTokens
+            .FirstOrDefaultAsync(t => t.RefreshTokenHash == refreshHash);
+
+        if (current is null || current.RevokedAt is not null
+            || current.RefreshExpiresAt is null || current.RefreshExpiresAt <= DateTime.UtcNow)
+            throw new ApiException("Refresh token invalido ou expirado", 400);
+        if (current.ClientId != clientId)
+            throw new ApiException("Refresh token invalido", 400);
+
+        // Rotação: a linha antiga morre junto com o access token que ela renovava, então
+        // reapresentar o mesmo refresh não devolve nada.
+        current.RevokedAt = DateTime.UtcNow;
+
+        return await IssueTokenPairAsync(current.ClientId, current.UserId, current.Scope);
+    }
+
+    private async Task<OAuthTokenResponse> IssueTokenPairAsync(string clientId, Guid userId, string scope)
+    {
         var token = GenerateToken();
+        var refreshToken = GenerateToken();
+
         db.OAuthAccessTokens.Add(new OAuthAccessToken
         {
             TokenHash = HashSecret(token),
-            ClientId = client.ClientId,
-            UserId = authorizationCode.UserId,
-            Scope = authorizationCode.Scope,
-            ExpiresAt = DateTime.UtcNow.AddSeconds(AccessTokenSeconds)
+            ClientId = clientId,
+            UserId = userId,
+            Scope = scope,
+            ExpiresAt = DateTime.UtcNow.AddSeconds(AccessTokenSeconds),
+            RefreshTokenHash = HashSecret(refreshToken),
+            RefreshExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays)
         });
 
         await db.SaveChangesAsync();
 
-        return new OAuthTokenResponse(token, "Bearer", AccessTokenSeconds, authorizationCode.Scope);
+        return new OAuthTokenResponse(token, "Bearer", AccessTokenSeconds, scope, refreshToken);
     }
 
     public async Task<OAuthTokenValidation> ValidateAccessTokenAsync(string accessToken, string requiredScope)
@@ -199,8 +242,11 @@ public class OAuthService(AppDbContext db)
         if (string.IsNullOrWhiteSpace(tokenValue))
             return;
 
+        // O cliente pode revogar o access ou o refresh (RFC 7009); os dois vivem na mesma
+        // linha, então revogar por qualquer um dos dois derruba o par inteiro.
         var tokenHash = HashSecret(tokenValue);
-        var token = await db.OAuthAccessTokens.FirstOrDefaultAsync(t => t.TokenHash == tokenHash);
+        var token = await db.OAuthAccessTokens
+            .FirstOrDefaultAsync(t => t.TokenHash == tokenHash || t.RefreshTokenHash == tokenHash);
         if (token is null || token.RevokedAt is not null)
             return;
 

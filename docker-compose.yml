@@ -9,6 +9,10 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      # Origem pública usada para montar as URLs de descoberta OAuth/MCP e o WWW-Authenticate.
+      # Sem ela o backend adivinha pelos headers de proxy e acaba anunciando http://, que
+      # cliente MCP recusa. Ex.: https://nutriplan.antoniomoraes.space
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       PORT: "3000"
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
     expose:

@@ -6,7 +6,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class MealSlotService(AppDbContext db)
+public class MealSlotService(AppDbContext db, UndoService undo)
 {
     public async Task<MealSlotResponse> CreateAsync(Guid planId, Guid userId, CreateMealSlotRequest request)
     {
@@ -22,6 +22,8 @@ public class MealSlotService(AppDbContext db)
             SortOrder = nextSortOrder
         };
 
+        var before = await undo.CaptureMealPlansAsync([planId], userId);
+
         db.MealSlots.Add(slot);
 
         // Auto-create Meal instance for every existing DayPlan
@@ -35,6 +37,7 @@ public class MealSlotService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
 
         return new MealSlotResponse(slot.Id, slot.Name, slot.Time, slot.SortOrder);
     }
@@ -43,10 +46,13 @@ public class MealSlotService(AppDbContext db)
     {
         var slot = await LoadEditableSlotAsync(planId, slotId, userId);
 
+        var before = await undo.CaptureMealPlansAsync([planId], userId);
+
         if (request.Name is not null) slot.Name = request.Name;
         if (request.Time is not null) slot.Time = string.IsNullOrWhiteSpace(request.Time) ? null : request.Time;
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
         return new MealSlotResponse(slot.Id, slot.Name, slot.Time, slot.SortOrder);
     }
 
@@ -58,6 +64,8 @@ public class MealSlotService(AppDbContext db)
         if (slotIds.Count != planSlotIds.Count || !slotIds.All(planSlotIds.Contains))
             throw new ApiException("Lista de slots inválida", 400);
 
+        var before = await undo.CaptureMealPlansAsync([planId], userId);
+
         for (var i = 0; i < slotIds.Count; i++)
         {
             var slot = plan.Slots.First(s => s.Id == slotIds[i]);
@@ -65,14 +73,18 @@ public class MealSlotService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     public async Task DeleteAsync(Guid planId, Guid slotId, Guid userId)
     {
         var slot = await LoadEditableSlotAsync(planId, slotId, userId);
 
+        var before = await undo.CaptureMealPlansAsync([planId], userId);
+
         db.MealSlots.Remove(slot);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     private async Task<MealPlan> LoadEditablePlanAsync(Guid planId, Guid userId, Func<IQueryable<MealPlan>, IQueryable<MealPlan>> withIncludes)

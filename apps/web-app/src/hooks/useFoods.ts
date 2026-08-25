@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { foodService } from '@/services/foodService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUndoToast } from './useUndo';
 import type { Food } from '@/types';
+import { foodKeys } from '@/lib/queryKeys';
+import type { WithUndo } from '@/lib/api';
 
-export const foodKeys = {
-  all: ['foods'] as const,
-  list: (params?: Record<string, unknown>) => [...foodKeys.all, 'list', params] as const,
-};
+export { foodKeys } from '@/lib/queryKeys';
 
 export function useAllFoods() {
   const { isAuthenticated } = useAuth();
@@ -26,21 +27,33 @@ export function useAllFoods() {
 
 export function useFoodMutations() {
   const queryClient = useQueryClient();
+  const undoToast = useUndoToast();
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: foodKeys.all });
+
+  const announce = (message: string) => (result: WithUndo<unknown>) => {
+    invalidate();
+    undoToast(message, result.undoToken);
+  };
 
   const create = useMutation({
     mutationFn: (input: Omit<Food, 'id'>) => foodService.create(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: foodKeys.all }),
+    onSuccess: announce('Alimento criado'),
   });
 
   const update = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Food> }) =>
       foodService.update(id, updates),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: foodKeys.all }),
+    onSuccess: announce('Alimento atualizado'),
   });
 
+  // Sem undo: excluir do catálogo cascateia para dados de todos os usuários (CHG-002).
   const remove = useMutation({
     mutationFn: (id: string) => foodService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: foodKeys.all }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Alimento excluído');
+    },
   });
 
   return {

@@ -305,7 +305,7 @@ describe("calculateDayMacros", () => {
 });
 
 describe("calculatePlanMacros", () => {
-  it("calcula média diária excluindo cheat meals, dividindo por 7", () => {
+  it("calcula média diária dividindo por 7", () => {
     const meals = [
       makeMeal({ foods: [{ food: rice, quantity: 100 }] }),
     ];
@@ -324,14 +324,33 @@ describe("calculatePlanMacros", () => {
     expect(result.protein).toBeCloseTo(2.7);
   });
 
-  it("ignora cheat meals no total", () => {
+  it("substitui cheat meal pela média do slot (ignora os alimentos do cheat)", () => {
     const plan = makePlan([
       {
         day: "segunda",
-        meals: [
-          makeMeal({ foods: [{ food: rice, quantity: 700 }] }),
-          makeMeal({ isCheat: true, foods: [{ food: chicken, quantity: 9999 }] }),
-        ],
+        meals: [makeMeal({ id: "m-normal", foods: [{ food: rice, quantity: 700 }] })],
+      },
+      {
+        day: "terca",
+        meals: [makeMeal({ id: "m-cheat", isCheat: true, foods: [{ food: chicken, quantity: 9999 }] })],
+      },
+      { day: "quarta", meals: [] },
+      { day: "quinta", meals: [] },
+      { day: "sexta", meals: [] },
+      { day: "sabado", meals: [] },
+      { day: "domingo", meals: [] },
+    ]);
+
+    // cheat conta como a média do slot (910), não como seus alimentos nem zero
+    const result = calculatePlanMacros(plan);
+    expect(result.calories).toBeCloseTo((910 + 910) / 7);
+  });
+
+  it("cheat meal contribui zero quando o slot não tem refeições normais", () => {
+    const plan = makePlan([
+      {
+        day: "segunda",
+        meals: [makeMeal({ id: "m-cheat", isCheat: true, foods: [{ food: chicken, quantity: 9999 }] })],
       },
       { day: "terca", meals: [] },
       { day: "quarta", meals: [] },
@@ -342,7 +361,7 @@ describe("calculatePlanMacros", () => {
     ]);
 
     const result = calculatePlanMacros(plan);
-    expect(result.calories).toBeCloseTo(910 / 7);
+    expect(result.calories).toBe(0);
   });
 
   it("retorna zeros para plano sem refeições", () => {

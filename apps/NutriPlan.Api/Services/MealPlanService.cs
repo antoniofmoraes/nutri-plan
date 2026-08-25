@@ -6,7 +6,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class MealPlanService(AppDbContext db)
+public class MealPlanService(AppDbContext db, UndoService undo)
 {
     public static readonly string[] WeekDays = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"];
 
@@ -60,8 +60,11 @@ public class MealPlanService(AppDbContext db)
             Days = WeekDays.Select(d => new DayPlan { Day = d }).ToList()
         };
 
+        var before = await undo.CaptureMealPlansAsync([plan.Id], userId);
+
         db.MealPlans.Add(plan);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
 
         return ToResponse(plan, userId, mainPlanId: null);
     }
@@ -76,6 +79,8 @@ public class MealPlanService(AppDbContext db)
             throw new ApiException("Plano alimentar não encontrado", 404);
         AssertEditAccess(plan, userId);
 
+        var before = await undo.CaptureMealPlansAsync([id], userId);
+
         if (request.Name is not null) plan.Name = request.Name;
         if (request.Goal is not null) plan.Goal = request.Goal;
         if (request.DailyCalories.HasValue) plan.DailyCalories = request.DailyCalories.Value;
@@ -84,6 +89,7 @@ public class MealPlanService(AppDbContext db)
         if (request.DailyFat.HasValue) plan.DailyFat = request.DailyFat;
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
         var mainPlanId = await GetMainPlanIdAsync(userId);
         return ToResponse(plan, userId, mainPlanId);
     }
@@ -96,8 +102,11 @@ public class MealPlanService(AppDbContext db)
         if (plan.UserId != userId)
             throw new ApiException("Acesso negado", 403);
 
+        var before = await undo.CaptureMealPlansAsync([id], userId);
+
         db.MealPlans.Remove(plan);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     private Task<Guid?> GetMainPlanIdAsync(Guid userId) =>

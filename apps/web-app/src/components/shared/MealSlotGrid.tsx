@@ -1,6 +1,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { weekDays } from '@/lib/constants';
-import type { MealPlan } from '@/types';
+import { cn } from '@/lib/utils';
+import type { MealPlan, Meal } from '@/types';
 
 interface MealSlotGridProps {
   plan: MealPlan;
@@ -9,6 +10,25 @@ interface MealSlotGridProps {
   showSelectAll?: boolean;
   onToggleAll?: () => void;
   allSelected?: boolean;
+  /// Exibe o estado atual de cada refeição (vazia, N alimentos, livre). Opt-in: os outros
+  /// consumidores da grade não têm o que fazer com essa informação.
+  showMealState?: boolean;
+}
+
+function MealState({ meal }: { meal: Meal }) {
+  if (meal.isCheat) {
+    return (
+      <span className="font-mono uppercase text-[9.5px] tracking-[0.08em] text-accent">livre</span>
+    );
+  }
+  if (meal.foods.length === 0) {
+    return <span className="text-[11px] text-muted-2">vazia</span>;
+  }
+  return (
+    <span className="num text-[11px] text-muted">
+      {meal.foods.length}
+    </span>
+  );
 }
 
 export function MealSlotGrid({
@@ -18,6 +38,7 @@ export function MealSlotGrid({
   showSelectAll,
   onToggleAll,
   allSelected,
+  showMealState,
 }: MealSlotGridProps) {
   const orderedSlots = [...plan.slots].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -49,14 +70,23 @@ export function MealSlotGrid({
                 return (
                   <label
                     key={day.value}
-                    className="flex items-center gap-2.5 rounded-[var(--r-sm)] border border-line px-3 py-3 text-[13px] cursor-pointer hover:bg-surface-alt min-h-[48px] transition-[background] duration-120"
+                    className={cn(
+                      'flex items-center gap-2.5 rounded-[var(--r-sm)] border border-line px-3 py-3 text-[13px] cursor-pointer hover:bg-surface-alt min-h-[48px] transition-[background] duration-120',
+                      showMealState && meal.isCheat && 'border-accent'
+                    )}
                   >
                     <Checkbox
                       checked={selectedMealIds.has(meal.id)}
                       onCheckedChange={() => onToggleMeal(meal.id)}
+                      aria-label={`${slot.name} · ${day.short}`}
                       className="h-5 w-5"
                     />
                     <span>{day.short}</span>
+                    {showMealState && (
+                      <span className="ml-auto">
+                        <MealState meal={meal} />
+                      </span>
+                    )}
                   </label>
                 );
               })}
@@ -101,12 +131,14 @@ export function MealSlotGrid({
                   }
                   return (
                     <td key={day.value} className="p-3 text-center">
-                      <label className="inline-grid place-items-center w-10 h-10 cursor-pointer rounded-[var(--r-sm)] hover:bg-surface-alt transition-[background] duration-120">
+                      <label className="inline-grid place-items-center gap-1 w-10 cursor-pointer rounded-[var(--r-sm)] py-1 hover:bg-surface-alt transition-[background] duration-120">
                         <Checkbox
                           checked={selectedMealIds.has(meal.id)}
                           onCheckedChange={() => onToggleMeal(meal.id)}
+                          aria-label={`${slot.name} · ${day.short}`}
                           className="h-5 w-5"
                         />
+                        {showMealState && <MealState meal={meal} />}
                       </label>
                     </td>
                   );

@@ -1,14 +1,14 @@
-export const PLAN_ITEM_DRAG_TYPE = 'application/x-portio-plan-item';
+export const LIBRARY_ITEM_DRAG_TYPE = 'application/x-portio-library-item';
 
-export type PlanItemDragPayload =
+export type LibraryItemDragPayload =
   | { type: 'food'; id: string }
   | { type: 'preset'; id: string };
 
-export function encodePlanItemDragPayload(payload: PlanItemDragPayload) {
+export function encodeLibraryItemDragPayload(payload: LibraryItemDragPayload) {
   return JSON.stringify(payload);
 }
 
-export function parsePlanItemDragPayload(value: string): PlanItemDragPayload | null {
+export function parseLibraryItemDragPayload(value: string): LibraryItemDragPayload | null {
   try {
     const parsed: unknown = JSON.parse(value);
     if (
@@ -26,4 +26,8 @@ export function parsePlanItemDragPayload(value: string): PlanItemDragPayload | n
   }
 
   return null;
+}
+
+export function hasLibraryItemDragPayload(dataTransfer: DataTransfer) {
+  return Array.from(dataTransfer.types).includes(LIBRARY_ITEM_DRAG_TYPE);
 }

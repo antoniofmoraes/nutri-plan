@@ -6,7 +6,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class FoodService(AppDbContext db)
+public class FoodService(AppDbContext db, UndoService undo)
 {
     public async Task<PaginatedResponse<FoodResponse>> GetAllAsync(string? search, int page = 1, int pageSize = 50)
     {
@@ -39,7 +39,7 @@ public class FoodService(AppDbContext db)
         return ToResponse(food);
     }
 
-    public async Task<FoodResponse> CreateAsync(CreateFoodRequest request)
+    public async Task<FoodResponse> CreateAsync(Guid userId, CreateFoodRequest request)
     {
         var food = new Food
         {
@@ -52,16 +52,21 @@ public class FoodService(AppDbContext db)
             Portion = request.Portion
         };
 
+        var before = await undo.CaptureFoodsAsync([food.Id]);
+
         db.Foods.Add(food);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
         return ToResponse(food);
     }
 
-    public async Task<FoodResponse> UpdateAsync(Guid id, UpdateFoodRequest request)
+    public async Task<FoodResponse> UpdateAsync(Guid id, Guid userId, UpdateFoodRequest request)
     {
         var food = await db.Foods.FindAsync(id);
         if (food is null)
             throw new ApiException("Alimento não encontrado", 404);
+
+        var before = await undo.CaptureFoodsAsync([id]);
 
         if (request.Name is not null) food.Name = request.Name;
         if (request.Calories.HasValue) food.Calories = request.Calories.Value;
@@ -72,9 +77,12 @@ public class FoodService(AppDbContext db)
         if (request.Portion is not null) food.Portion = request.Portion;
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
         return ToResponse(food);
     }
 
+    // Sem undo por decisão de produto: excluir do catálogo cascateia para refeições e
+    // refeições prontas de todos os usuários, então restaurar reescreveria dados de terceiros.
     public async Task DeleteAsync(Guid id)
     {
         var food = await db.Foods.FindAsync(id);

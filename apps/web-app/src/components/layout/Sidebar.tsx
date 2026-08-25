@@ -7,10 +7,13 @@ import {
   ShoppingCart,
   LogOut,
   Menu,
+  Moon,
+  Sun,
   Bot,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PortioMark, PortioWordmark } from './PortioLogo';
 
@@ -22,6 +25,23 @@ const navigation = [
   { name: 'Listas de compras', href: '/listas-compras', icon: ShoppingCart },
   { name: 'Integracoes IA', href: '/integracoes-ia', icon: Bot },
 ];
+
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      title={isDark ? 'Tema claro' : 'Tema escuro'}
+      className="w-[30px] h-[30px] rounded-lg grid place-items-center text-muted hover:bg-surface-alt hover:text-ink transition-[background,color] duration-120"
+    >
+      {isDark ? <Sun size={16} strokeWidth={1.6} /> : <Moon size={16} strokeWidth={1.6} />}
+    </button>
+  );
+}
 
 function SidebarBody({
   onNavigate,
@@ -100,6 +120,7 @@ function SidebarBody({
             {user?.email}
           </div>
         </div>
+        <ThemeToggle />
         <button
           onClick={logout}
           title="Sair"
@@ -118,7 +139,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-10 h-14 px-3.5 border-b border-line bg-bg items-center gap-3 hidden max-[900px]:flex">
+      <div className="sticky top-0 z-10 h-14 px-3.5 border-b border-line bg-bg items-center gap-3 hidden max-lg:flex">
         <button
           onClick={() => setDrawerOpen(true)}
           className="w-9 h-9 rounded-lg bg-transparent border border-line grid place-items-center text-ink"
@@ -132,7 +153,7 @@ export function Sidebar() {
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="hidden min-[901px]:flex border-r border-line bg-paper h-screen sticky top-0 flex-col overflow-hidden w-64">
+      <aside className="hidden lg:flex border-r border-line bg-paper h-screen sticky top-0 flex-col overflow-hidden w-64">
         <SidebarBody />
       </aside>
 

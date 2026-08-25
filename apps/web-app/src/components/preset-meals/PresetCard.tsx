@@ -1,9 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId, type DragEvent } from 'react';
 import { Plus, Edit, Trash2, X, ChevronDown, ChevronUp, Send, Search, Copy } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { calculateFoodMacros, calculateFoodsMacros } from '@/lib/macros';
+import {
+  hasLibraryItemDragPayload,
+  parseLibraryItemDragPayload,
+  LIBRARY_ITEM_DRAG_TYPE,
+  type LibraryItemDragPayload,
+} from '@/components/shared/dragPayload';
+import { cn } from '@/lib/utils';
 import type { PresetMeal, Food } from '@/types';
 
 interface PresetCardProps {
@@ -12,13 +21,138 @@ interface PresetCardProps {
   canApply: boolean;
   allFoods: Food[];
   onToggleExpand: () => void;
-  onEdit: () => void;
+  onRename: (name: string) => Promise<unknown>;
   onDelete: () => void;
   onAddFood: () => void;
   onRemoveFood: (foodId: string) => void;
   onUpdateFood: (foodId: string, updates: { newFoodId?: string; quantity?: number }) => void;
   onDuplicate: () => void;
   onApply: () => void;
+  onDropItem?: (payload: LibraryItemDragPayload) => void;
+}
+
+function InlineNameEdit({
+  name,
+  editing,
+  onEditingChange,
+  onSave,
+}: {
+  name: string;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  onSave: (name: string) => Promise<unknown>;
+}) {
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
+
+  useEffect(() => {
+    if (editing) {
+      setValue(name);
+      setError(null);
+      setTimeout(() => inputRef.current?.select(), 0);
+    }
+  }, [editing, name]);
+
+  const close = () => {
+    setError(null);
+    onEditingChange(false);
+  };
+
+  const commit = async () => {
+    if (savingRef.current) return;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setError('Nome obrigatório');
+      return;
+    }
+    if (trimmed === name) {
+      close();
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onSave(trimmed);
+      close();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o nome');
+      setValue(name);
+      close();
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  // Sair do campo com o nome apagado cancela: R4 proíbe enviar vazio e manda manter o valor anterior.
+  const handleBlur = () => {
+    if (savingRef.current) return;
+    if (!value.trim()) {
+      close();
+      return;
+    }
+    void commit();
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        title="Clique para renomear"
+        onClick={(event) => {
+          event.stopPropagation();
+          onEditingChange(true);
+        }}
+        className="font-semibold text-[15px] truncate text-left rounded-sm px-1 -mx-1 cursor-text hover:bg-surface-alt transition-[background] duration-120 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      >
+        {name}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-w-0" onClick={(event) => event.stopPropagation()}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        readOnly={saving}
+        aria-label="Nome da refeição pronta"
+        aria-invalid={error !== null}
+        aria-describedby={error ? errorId : undefined}
+        onChange={(e) => {
+          setValue(e.target.value);
+          if (error) setError(null);
+        }}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            void commit();
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            setValue(name);
+            close();
+          }
+        }}
+        className={cn(
+          'w-full font-semibold text-[15px] bg-surface-alt border rounded-sm px-1.5 py-0.5 outline-none focus:ring-1',
+          error ? 'border-danger focus:ring-danger' : 'border-line focus:ring-accent',
+          saving && 'opacity-60'
+        )}
+      />
+      {error && (
+        <p id={errorId} role="alert" className="text-[11.5px] text-danger mt-1">
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function InlineQuantityEdit({ quantity, onSave }: { quantity: number; onSave: (v: number) => void }) {
@@ -147,29 +281,67 @@ export function PresetCard({
   canApply,
   allFoods,
   onToggleExpand,
-  onEdit,
+  onRename,
   onDelete,
   onAddFood,
   onRemoveFood,
   onUpdateFood,
   onDuplicate,
   onApply,
+  onDropItem,
 }: PresetCardProps) {
   const macros = calculateFoodsMacros(preset.foods);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!onDropItem || !hasLibraryItemDragPayload(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    setIsDragOver(false);
+    if (!onDropItem) return;
+    event.preventDefault();
+    const payload = parseLibraryItemDragPayload(event.dataTransfer.getData(LIBRARY_ITEM_DRAG_TYPE));
+    if (payload) onDropItem(payload);
+  };
 
   return (
-    <div className="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        'bg-surface border border-line rounded-lg shadow-1 overflow-hidden transition-[background,border-color,box-shadow] duration-120',
+        isDragOver && 'border-ink bg-surface-alt shadow-2'
+      )}
+    >
       <div className="px-4 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div
-            className="flex-1 min-w-0 cursor-pointer"
-            onClick={onToggleExpand}
+            className={cn('flex-1 min-w-0', !editingName && 'cursor-pointer')}
+            onClick={editingName ? undefined : onToggleExpand}
           >
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[15px] truncate">{preset.name}</span>
+              <InlineNameEdit
+                name={preset.name}
+                editing={editingName}
+                onEditingChange={setEditingName}
+                onSave={onRename}
+              />
               {isExpanded
                 ? <ChevronUp size={15} className="text-muted flex-shrink-0" />
                 : <ChevronDown size={15} className="text-muted flex-shrink-0" />}
+              {isDragOver && <Badge variant="solid">Soltar</Badge>}
             </div>
             <div className="mono inline-flex gap-2 mt-1 text-[11.5px] text-muted flex-wrap">
               <span className="num font-medium" style={{ color: 'var(--m-cal)' }}>{macros.calories.toFixed(0)} kcal</span>
@@ -193,10 +365,10 @@ export function PresetCard({
             <Button variant="ghost" size="icon-sm" onClick={onDuplicate} title="Duplicar">
               <Copy size={14} strokeWidth={1.6} />
             </Button>
-            <Button variant="ghost" size="icon-sm" onClick={onEdit}>
+            <Button variant="ghost" size="icon-sm" onClick={() => setEditingName(true)} title="Renomear">
               <Edit size={14} strokeWidth={1.6} />
             </Button>
-            <Button variant="ghost" size="icon-sm" className="hover:text-danger" onClick={onDelete}>
+            <Button variant="ghost" size="icon-sm" className="hover:text-danger" onClick={onDelete} title="Excluir">
               <Trash2 size={14} strokeWidth={1.6} />
             </Button>
           </div>
@@ -223,7 +395,7 @@ export function PresetCard({
                     />
                     <div className="mono inline-flex gap-2 text-[12px] font-medium">
                       <span className="num" style={{ color: 'var(--m-cal)' }}>{foodMacros.calories.toFixed(0)} kcal</span>
-                      <span style={{ color: 'var(--m-prot)' }}>P {foodMacros.protein.toFixed(0)}g</span>
+                      <span style={{ color: 'var(--m-pro)' }}>P {foodMacros.protein.toFixed(0)}g</span>
                       <span style={{ color: 'var(--m-carb)' }}>C {foodMacros.carbs.toFixed(0)}g</span>
                       <span style={{ color: 'var(--m-fat)' }}>G {foodMacros.fat.toFixed(0)}g</span>
                     </div>

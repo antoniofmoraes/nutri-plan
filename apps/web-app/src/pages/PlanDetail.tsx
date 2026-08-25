@@ -190,12 +190,12 @@ export default function PlanDetail() {
           <div className="flex items-center gap-2.5 mt-2 flex-wrap">
             <Badge variant="accent">{goalLabels[plan.goal]}</Badge>
             {!isOwner && (
-              <Badge variant="secondary">
+              <Badge variant="solid">
                 Compartilhado por {plan.ownerName}
               </Badge>
             )}
             {!isOwner && !canEditPlan && (
-              <Badge variant="outline">Somente leitura</Badge>
+              <Badge variant="default">Somente leitura</Badge>
             )}
             <span className="mono text-[11.5px] text-muted">
               {plan.dailyCalories.toLocaleString("pt-BR")} kcal/dia · {plan.slots.length} refeições

@@ -391,7 +391,7 @@ export default function Foods() {
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
         title={`Excluir "${deleteTarget?.name}"?`}
-        description="O alimento será removido do catálogo. Esta ação não pode ser desfeita."
+        description="O alimento sai do catálogo e de todas as refeições e refeições prontas que o usam, de qualquer usuário. Esta ação não pode ser desfeita."
         confirmLabel="Excluir"
         onConfirm={handleConfirmDelete}
       />

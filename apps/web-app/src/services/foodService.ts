@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, apiUndo, type WithUndo } from '@/lib/api';
 import { Food } from '@/types';
 
 interface CreateFoodInput {
@@ -43,12 +43,12 @@ export const foodService = {
     return api.get<Food>(`/api/foods/${id}`);
   },
 
-  async create(input: CreateFoodInput): Promise<Food> {
-    return api.post<Food>('/api/foods', input);
+  async create(input: CreateFoodInput): Promise<WithUndo<Food>> {
+    return apiUndo.post<Food>('/api/foods', input);
   },
 
-  async update(id: string, input: UpdateFoodInput): Promise<Food> {
-    return api.patch<Food>(`/api/foods/${id}`, input);
+  async update(id: string, input: UpdateFoodInput): Promise<WithUndo<Food>> {
+    return apiUndo.patch<Food>(`/api/foods/${id}`, input);
   },
 
   async delete(id: string): Promise<void> {

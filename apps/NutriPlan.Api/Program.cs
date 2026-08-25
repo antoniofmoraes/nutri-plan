@@ -164,6 +164,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<FoodService>();
+builder.Services.AddScoped<UndoService>();
 builder.Services.AddScoped<MealPlanService>();
 builder.Services.AddScoped<MealPlanShareService>();
 builder.Services.AddScoped<MealSlotService>();
@@ -214,15 +215,91 @@ static async Task<(Guid UserId, bool CanWrite)> GetMcpRequestContextAsync(HttpCo
 
     var authHeader = ctx.Request.Headers.Authorization.ToString();
     if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        ctx.Response.Headers.Append(
+            "WWW-Authenticate",
+            $"Bearer resource_metadata=\"{GetPublicOrigin(ctx)}/.well-known/oauth-protected-resource/api/mcp\"");
         throw new ApiException("Token nao fornecido", 401);
+    }
 
     var token = authHeader["Bearer ".Length..].Trim();
     var validation = await oauthSvc.ValidateAccessTokenAsync(token, "mcp:read");
     return (validation.UserId, validation.Scopes.Contains("mcp:write"));
 }
 
+static string GetPublicOrigin(HttpContext ctx)
+{
+    var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
+    var configuredOrigin = config["PUBLIC_BASE_URL"] ?? config["PUBLIC_APP_URL"] ?? config["APP_PUBLIC_URL"];
+    if (!string.IsNullOrWhiteSpace(configuredOrigin))
+        return configuredOrigin.Trim().TrimEnd('/');
+
+    var forwardedProto = ctx.Request.Headers["X-Forwarded-Proto"].ToString()
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .FirstOrDefault();
+    var forwardedHost = ctx.Request.Headers["X-Forwarded-Host"].ToString()
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .FirstOrDefault();
+
+    var scheme = string.IsNullOrWhiteSpace(forwardedProto) ? ctx.Request.Scheme : forwardedProto;
+    var host = string.IsNullOrWhiteSpace(forwardedHost) ? ctx.Request.Host.Value : forwardedHost;
+
+    if (ctx.Request.Headers["X-Forwarded-Ssl"].ToString().Equals("on", StringComparison.OrdinalIgnoreCase))
+        scheme = "https";
+
+    return $"{scheme}://{host}".TrimEnd('/');
+}
+
+static object GetOAuthAuthorizationServerMetadata(HttpContext ctx)
+{
+    var origin = GetPublicOrigin(ctx);
+
+    return new
+    {
+        issuer = origin,
+        authorization_endpoint = $"{origin}/oauth/authorize",
+        token_endpoint = $"{origin}/api/oauth/token",
+        registration_endpoint = $"{origin}/api/oauth/register",
+        revocation_endpoint = $"{origin}/api/oauth/revoke",
+        scopes_supported = new[] { "mcp:read", "mcp:write" },
+        response_types_supported = new[] { "code" },
+        grant_types_supported = new[] { "authorization_code" },
+        code_challenge_methods_supported = new[] { "S256" },
+        token_endpoint_auth_methods_supported = new[] { "none" },
+        service_documentation = $"{origin}/integracoes-ia/instrucoes",
+        protected_resources = new[] { $"{origin}/api/mcp" }
+    };
+}
+
+static object GetOAuthProtectedResourceMetadata(HttpContext ctx)
+{
+    var origin = GetPublicOrigin(ctx);
+
+    return new
+    {
+        resource = $"{origin}/api/mcp",
+        resource_name = "NutriPlan MCP",
+        resource_documentation = $"{origin}/integracoes-ia/instrucoes",
+        authorization_servers = new[] { origin },
+        scopes_supported = new[] { "mcp:read", "mcp:write" },
+        bearer_methods_supported = new[] { "header" }
+    };
+}
+
 app.MapGet("/", () => Results.Json(new { success = true, message = "NutriPlan API", version = "1.0.0", timestamp = DateTime.UtcNow }));
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
+
+app.MapGet("/.well-known/oauth-authorization-server", (HttpContext ctx) =>
+    Results.Json(GetOAuthAuthorizationServerMetadata(ctx)));
+
+app.MapGet("/.well-known/openid-configuration", (HttpContext ctx) =>
+    Results.Json(GetOAuthAuthorizationServerMetadata(ctx)));
+
+app.MapGet("/.well-known/oauth-protected-resource", (HttpContext ctx) =>
+    Results.Json(GetOAuthProtectedResourceMetadata(ctx)));
+
+app.MapGet("/.well-known/oauth-protected-resource/{**resourcePath}", (HttpContext ctx) =>
+    Results.Json(GetOAuthProtectedResourceMetadata(ctx)));
 
 // ─── Auth ─────────────────────────────────────────────────
 var auth = app.MapGroup("/api/auth");
@@ -287,6 +364,10 @@ oauth.MapPost("/token", async (HttpContext ctx, OAuthService svc) =>
     return Results.Json(await svc.ExchangeCodeAsync(form));
 });
 
+oauth.MapPost("/register", async (OAuthClientRegistrationRequest request, OAuthService svc) =>
+    Results.Json(await svc.RegisterClientAsync(request), statusCode: 201))
+    .RequireRateLimiting("auth");
+
 oauth.MapPost("/revoke", async (HttpContext ctx, OAuthService svc) =>
 {
     if (!ctx.Request.HasFormContentType)
@@ -315,6 +396,11 @@ users.MapDelete("/me", async (HttpContext ctx, UserService svc) =>
 });
 
 // ─── Foods ────────────────────────────────────────────────
+var undo = app.MapGroup("/api/undo").RequireAuthorization();
+
+undo.MapPost("/{token:guid}", async (Guid token, HttpContext ctx, UndoService svc) =>
+    Results.Json(ApiResponses.Ok(await svc.UndoAsync(token, GetUserId(ctx)))));
+
 // Leitura: qualquer usuário autenticado. Mutação: apenas admin (o catálogo é
 // global/compartilhado — sem admin gate, qualquer user vandalizaria a base).
 var foods = app.MapGroup("/api/foods").RequireAuthorization();
@@ -325,12 +411,12 @@ foods.MapGet("/", async (string? search, int? page, int? pageSize, FoodService s
 foods.MapGet("/{id:guid}", async (Guid id, FoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id))));
 
-foods.MapPost("/", async (CreateFoodRequest request, FoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.CreateAsync(request)), statusCode: 201))
+foods.MapPost("/", async (HttpContext ctx, CreateFoodRequest request, FoodService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request), undo.LastToken), statusCode: 201))
     .RequireAuthorization("Admin");
 
-foods.MapPatch("/{id:guid}", async (Guid id, UpdateFoodRequest request, FoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, request))))
+foods.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdateFoodRequest request, FoodService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request), undo.LastToken)))
     .RequireAuthorization("Admin");
 
 foods.MapDelete("/{id:guid}", async (Guid id, FoodService svc) =>
@@ -349,11 +435,11 @@ mealPlans.MapGet("/", async (HttpContext ctx, MealPlanService svc) =>
 mealPlans.MapGet("/{id:guid}", async (Guid id, HttpContext ctx, MealPlanService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id, GetUserId(ctx)))));
 
-mealPlans.MapPost("/", async (HttpContext ctx, CreateMealPlanRequest request, MealPlanService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request)), statusCode: 201));
+mealPlans.MapPost("/", async (HttpContext ctx, CreateMealPlanRequest request, MealPlanService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request), undo.LastToken), statusCode: 201));
 
-mealPlans.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdateMealPlanRequest request, MealPlanService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request))));
+mealPlans.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdateMealPlanRequest request, MealPlanService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request), undo.LastToken)));
 
 mealPlans.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, MealPlanService svc) =>
 {
@@ -385,22 +471,22 @@ mealPlans.MapGet("/{id:guid}/export", async (Guid id, HttpContext ctx, string? f
 });
 
 // ─── Meal Slots (plan-level meal templates) ──────────────
-mealPlans.MapPost("/{planId:guid}/slots", async (Guid planId, HttpContext ctx, CreateMealSlotRequest request, MealSlotService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.CreateAsync(planId, GetUserId(ctx), request)), statusCode: 201));
+mealPlans.MapPost("/{planId:guid}/slots", async (Guid planId, HttpContext ctx, CreateMealSlotRequest request, MealSlotService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(planId, GetUserId(ctx), request), undo.LastToken), statusCode: 201));
 
-mealPlans.MapPatch("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, UpdateMealSlotRequest request, MealSlotService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(planId, slotId, GetUserId(ctx), request))));
+mealPlans.MapPatch("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, UpdateMealSlotRequest request, MealSlotService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(planId, slotId, GetUserId(ctx), request), undo.LastToken)));
 
-mealPlans.MapPut("/{planId:guid}/slots/order", async (Guid planId, HttpContext ctx, ReorderSlotsRequest request, MealSlotService svc) =>
+mealPlans.MapPut("/{planId:guid}/slots/order", async (Guid planId, HttpContext ctx, ReorderSlotsRequest request, MealSlotService svc, UndoService undo) =>
 {
     await svc.ReorderAsync(planId, GetUserId(ctx), request.SlotIds);
-    return Results.Json(new ApiResponse(true, Message: "Ordem atualizada"));
+    return Results.Json(ApiResponses.Ok("Ordem atualizada", undo.LastToken));
 });
 
-mealPlans.MapDelete("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, MealSlotService svc) =>
+mealPlans.MapDelete("/{planId:guid}/slots/{slotId:guid}", async (Guid planId, Guid slotId, HttpContext ctx, MealSlotService svc, UndoService undo) =>
 {
     await svc.DeleteAsync(planId, slotId, GetUserId(ctx));
-    return Results.Json(new ApiResponse(true, Message: "Refeição excluída com sucesso"));
+    return Results.Json(ApiResponses.Ok("Refeição excluída com sucesso", undo.LastToken));
 });
 
 // ─── Plan Sharing ────────────────────────────────────────
@@ -450,28 +536,28 @@ mealPlans.MapGet("/{planId:guid}/days/{day}/meals", async (Guid planId, string d
 // ─── Meal Foods + Meal Toggle ────────────────────────────
 var meals = app.MapGroup("/api/meals").RequireAuthorization();
 
-meals.MapPatch("/{mealId:guid}/cheat", async (Guid mealId, HttpContext ctx, UpdateMealCheatRequest request, MealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.SetCheatAsync(mealId, GetUserId(ctx), request.IsCheat))));
+meals.MapPatch("/{mealId:guid}/cheat", async (Guid mealId, HttpContext ctx, UpdateMealCheatRequest request, MealService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.SetCheatAsync(mealId, GetUserId(ctx), request.IsCheat), undo.LastToken)));
 
-meals.MapPost("/{mealId:guid}/copy", async (Guid mealId, HttpContext ctx, CopyMealRequest request, MealService svc) =>
+meals.MapPost("/{mealId:guid}/copy", async (Guid mealId, HttpContext ctx, CopyMealRequest request, MealService svc, UndoService undo) =>
 {
     await svc.CopyToAsync(mealId, GetUserId(ctx), request.TargetMealIds);
-    return Results.Json(new ApiResponse(true, Message: "Refeição copiada"));
+    return Results.Json(ApiResponses.Ok("Refeição copiada", undo.LastToken));
 });
 
 meals.MapGet("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, MealFoodService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetMealFoodsAsync(mealId, GetUserId(ctx)))));
 
-meals.MapPost("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, AddFoodToMealRequest request, MealFoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.AddFoodToMealAsync(mealId, GetUserId(ctx), request)), statusCode: 201));
+meals.MapPost("/{mealId:guid}/foods", async (Guid mealId, HttpContext ctx, AddFoodToMealRequest request, MealFoodService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.AddFoodToMealAsync(mealId, GetUserId(ctx), request), undo.LastToken), statusCode: 201));
 
-meals.MapPatch("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, UpdateMealFoodRequest request, MealFoodService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateMealFoodAsync(mealId, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity))));
+meals.MapPatch("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, UpdateMealFoodRequest request, MealFoodService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateMealFoodAsync(mealId, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity), undo.LastToken)));
 
-meals.MapDelete("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, MealFoodService svc) =>
+meals.MapDelete("/{mealId:guid}/foods/{foodId:guid}", async (Guid mealId, Guid foodId, HttpContext ctx, MealFoodService svc, UndoService undo) =>
 {
     await svc.RemoveFoodFromMealAsync(mealId, foodId, GetUserId(ctx));
-    return Results.Json(new ApiResponse(true, Message: "Alimento removido da refeição"));
+    return Results.Json(ApiResponses.Ok("Alimento removido da refeição", undo.LastToken));
 });
 
 // ─── Shopping Lists ───────────────────────────────────────
@@ -531,37 +617,43 @@ presetMeals.MapGet("/", async (HttpContext ctx, PresetMealService svc) =>
 presetMeals.MapGet("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc) =>
     Results.Json(ApiResponses.Ok(await svc.GetByIdAsync(id, GetUserId(ctx)))));
 
-presetMeals.MapPost("/", async (HttpContext ctx, CreatePresetMealRequest request, PresetMealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request)), statusCode: 201));
+presetMeals.MapPost("/", async (HttpContext ctx, CreatePresetMealRequest request, PresetMealService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.CreateAsync(GetUserId(ctx), request), undo.LastToken), statusCode: 201));
 
-presetMeals.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdatePresetMealRequest request, PresetMealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request))));
+presetMeals.MapPatch("/{id:guid}", async (Guid id, HttpContext ctx, UpdatePresetMealRequest request, PresetMealService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateAsync(id, GetUserId(ctx), request), undo.LastToken)));
 
-presetMeals.MapPost("/{id:guid}/duplicate", async (Guid id, HttpContext ctx, PresetMealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.DuplicateAsync(id, GetUserId(ctx))), statusCode: 201));
+presetMeals.MapPost("/{id:guid}/duplicate", async (Guid id, HttpContext ctx, PresetMealService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.DuplicateAsync(id, GetUserId(ctx)), undo.LastToken), statusCode: 201));
 
-presetMeals.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc) =>
+presetMeals.MapDelete("/{id:guid}", async (Guid id, HttpContext ctx, PresetMealService svc, UndoService undo) =>
 {
     await svc.DeleteAsync(id, GetUserId(ctx));
-    return Results.Json(new ApiResponse(true, Message: "Refeição pronta excluída com sucesso"));
+    return Results.Json(ApiResponses.Ok("Refeição pronta excluída com sucesso", undo.LastToken));
 });
 
-presetMeals.MapPost("/{id:guid}/foods", async (Guid id, HttpContext ctx, AddPresetMealFoodRequest request, PresetMealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.AddFoodAsync(id, GetUserId(ctx), request)), statusCode: 201));
+presetMeals.MapPost("/{id:guid}/copy-from/{sourceId:guid}", async (Guid id, Guid sourceId, HttpContext ctx, PresetMealService svc, UndoService undo) =>
+{
+    await svc.CopyFoodsFromAsync(id, sourceId, GetUserId(ctx));
+    return Results.Json(ApiResponses.Ok("Alimentos copiados", undo.LastToken));
+});
 
-presetMeals.MapPatch("/{id:guid}/foods/{foodId:guid}", async (Guid id, Guid foodId, HttpContext ctx, UpdatePresetMealFoodRequest request, PresetMealService svc) =>
-    Results.Json(ApiResponses.Ok(await svc.UpdateFoodAsync(id, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity))));
+presetMeals.MapPost("/{id:guid}/foods", async (Guid id, HttpContext ctx, AddPresetMealFoodRequest request, PresetMealService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.AddFoodAsync(id, GetUserId(ctx), request), undo.LastToken), statusCode: 201));
 
-presetMeals.MapDelete("/{id:guid}/foods/{foodId:guid}", async (Guid id, Guid foodId, HttpContext ctx, PresetMealService svc) =>
+presetMeals.MapPatch("/{id:guid}/foods/{foodId:guid}", async (Guid id, Guid foodId, HttpContext ctx, UpdatePresetMealFoodRequest request, PresetMealService svc, UndoService undo) =>
+    Results.Json(ApiResponses.Ok(await svc.UpdateFoodAsync(id, foodId, GetUserId(ctx), request.NewFoodId, request.Quantity), undo.LastToken)));
+
+presetMeals.MapDelete("/{id:guid}/foods/{foodId:guid}", async (Guid id, Guid foodId, HttpContext ctx, PresetMealService svc, UndoService undo) =>
 {
     await svc.RemoveFoodAsync(id, foodId, GetUserId(ctx));
-    return Results.Json(new ApiResponse(true, Message: "Alimento removido da refeição pronta"));
+    return Results.Json(ApiResponses.Ok("Alimento removido da refeição pronta", undo.LastToken));
 });
 
-presetMeals.MapPost("/{id:guid}/apply", async (Guid id, HttpContext ctx, ApplyPresetRequest request, PresetMealService svc) =>
+presetMeals.MapPost("/{id:guid}/apply", async (Guid id, HttpContext ctx, ApplyPresetRequest request, PresetMealService svc, UndoService undo) =>
 {
     await svc.ApplyAsync(id, GetUserId(ctx), request.TargetMealIds);
-    return Results.Json(new ApiResponse(true, Message: "Refeição pronta aplicada"));
+    return Results.Json(ApiResponses.Ok("Refeição pronta aplicada", undo.LastToken));
 });
 
 // MCP (AI integrations)

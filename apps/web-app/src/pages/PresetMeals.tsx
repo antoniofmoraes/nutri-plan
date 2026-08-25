@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, BookCopy } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { usePresetMeals } from '@/hooks/usePresetMeals';
 import { useAllFoods } from '@/hooks/useFoods';
 import { useMealPlans } from '@/hooks/useMealPlans';
+import { getFoodPortionGrams } from '@/lib/macros';
 import type { PresetMeal, Food } from '@/types';
 import { PresetCard } from '@/components/preset-meals/PresetCard';
 import { PresetNameDialog } from '@/components/preset-meals/PresetNameDialog';
@@ -11,6 +14,8 @@ import { AddFoodToPresetDialog } from '@/components/preset-meals/AddFoodToPreset
 import { ApplyPresetDialog } from '@/components/preset-meals/ApplyPresetDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { LibrarySidebar } from '@/components/shared/LibrarySidebar';
+import type { LibraryItemDragPayload } from '@/components/shared/dragPayload';
 
 export default function PresetMeals() {
   const {
@@ -22,38 +27,31 @@ export default function PresetMeals() {
     addFoodToPreset,
     updateFoodInPreset,
     removeFoodFromPreset,
+    copyFoodsBetweenPresets,
     applyPreset,
   } = usePresetMeals();
   const { foods } = useAllFoods();
-  const { mealPlans } = useMealPlans();
+  const { mealPlans, isLoading: isLoadingPlans } = useMealPlans();
 
+  const navigate = useNavigate();
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
-  const [editingPreset, setEditingPreset] = useState<PresetMeal | null>(null);
   const [presetName, setPresetName] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [foodDialogPresetId, setFoodDialogPresetId] = useState<string | null>(null);
   const [applyPresetId, setApplyPresetId] = useState<string | null>(null);
 
-  const handleOpenCreate = () => {
-    setEditingPreset(null);
-    setPresetName('');
-    setNameDialogOpen(true);
-  };
+  // Derivado da lista (e não guardado em estado) para refletir rename e sumir se o preset for excluído.
+  const presetToApply = presetMeals.find((preset) => preset.id === applyPresetId) ?? null;
 
-  const handleOpenEdit = (preset: PresetMeal) => {
-    setEditingPreset(preset);
-    setPresetName(preset.name);
+  const handleOpenCreate = () => {
+    setPresetName('');
     setNameDialogOpen(true);
   };
 
   const handleSubmitName = async () => {
     if (!presetName.trim()) return;
-    if (editingPreset) {
-      await updatePresetMeal(editingPreset.id, presetName.trim());
-    } else {
-      await addPresetMeal(presetName.trim());
-    }
+    await addPresetMeal(presetName.trim());
     setNameDialogOpen(false);
   };
 
@@ -70,10 +68,34 @@ export default function PresetMeals() {
     await addFoodToPreset(foodDialogPresetId, food, quantity);
   };
 
+  // Sem try/catch: o diálogo trata a falha para manter a seleção e continuar aberto (R8).
   const handleApply = async (_planId: string, mealIds: string[]) => {
     if (!applyPresetId) return;
     await applyPreset(applyPresetId, mealIds);
     setApplyPresetId(null);
+  };
+
+  const handleDropItem = async (target: PresetMeal, payload: LibraryItemDragPayload) => {
+    try {
+      if (payload.type === 'food') {
+        const food = foods.find((item) => item.id === payload.id);
+        if (!food) return;
+        await addFoodToPreset(target.id, food, getFoodPortionGrams(food.portion));
+      } else {
+        if (payload.id === target.id) return;
+        const source = presetMeals.find((preset) => preset.id === payload.id);
+        if (!source) return;
+        if (source.foods.length === 0) {
+          toast.info('A refeição arrastada não tem alimentos para copiar');
+          return;
+        }
+        // Uma chamada só: desfazer precisa reverter a cópia inteira, não o último alimento.
+        await copyFoodsBetweenPresets(target.id, source.id);
+      }
+      setExpandedId(target.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar itens');
+    }
   };
 
   return (
@@ -109,24 +131,32 @@ export default function PresetMeals() {
           }
         />
       ) : (
-        <div className="space-y-3">
-          {presetMeals.map((preset) => (
-            <PresetCard
-              key={preset.id}
-              preset={preset}
-              isExpanded={expandedId === preset.id}
-              canApply={mealPlans.length > 0}
-              allFoods={foods}
-              onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
-              onDuplicate={() => duplicatePresetMeal(preset.id)}
-              onEdit={() => handleOpenEdit(preset)}
-              onDelete={() => setDeleteTarget(preset.id)}
-              onAddFood={() => setFoodDialogPresetId(preset.id)}
-              onRemoveFood={(foodId) => removeFoodFromPreset(preset.id, foodId)}
-              onUpdateFood={(foodId, updates) => updateFoodInPreset(preset.id, foodId, updates)}
-              onApply={() => setApplyPresetId(preset.id)}
-            />
-          ))}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="space-y-3 min-w-0">
+            {presetMeals.map((preset) => (
+              <PresetCard
+                key={preset.id}
+                preset={preset}
+                isExpanded={expandedId === preset.id}
+                canApply={mealPlans.length > 0}
+                allFoods={foods}
+                onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
+                onDuplicate={() => duplicatePresetMeal(preset.id)}
+                onRename={(name) => updatePresetMeal(preset.id, name)}
+                onDelete={() => setDeleteTarget(preset.id)}
+                onAddFood={() => setFoodDialogPresetId(preset.id)}
+                onRemoveFood={(foodId) => removeFoodFromPreset(preset.id, foodId)}
+                onUpdateFood={(foodId, updates) => updateFoodInPreset(preset.id, foodId, updates)}
+                onApply={() => setApplyPresetId(preset.id)}
+                onDropItem={(payload) => handleDropItem(preset, payload)}
+              />
+            ))}
+          </div>
+          <LibrarySidebar
+            foods={foods}
+            presetMeals={presetMeals}
+            dropHint="Arraste um item para uma refeição pronta para adicioná-lo."
+          />
         </div>
       )}
 
@@ -135,7 +165,6 @@ export default function PresetMeals() {
         onOpenChange={setNameDialogOpen}
         name={presetName}
         onNameChange={setPresetName}
-        isEditing={editingPreset !== null}
         onSubmit={handleSubmitName}
       />
 
@@ -155,10 +184,13 @@ export default function PresetMeals() {
       />
 
       <ApplyPresetDialog
-        open={applyPresetId !== null}
+        open={presetToApply !== null}
         onOpenChange={(open) => { if (!open) setApplyPresetId(null); }}
+        preset={presetToApply}
         mealPlans={mealPlans}
+        isLoadingPlans={isLoadingPlans}
         onApply={handleApply}
+        onCreatePlan={() => navigate('/planos')}
       />
     </div>
   );

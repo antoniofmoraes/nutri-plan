@@ -116,7 +116,7 @@ Grid de **4px**. Valores comuns: `4, 6, 8, 10, 12, 14, 16, 20, 22, 24, 28, 32, 4
 
 ## Motion
 
-- Hover: `transition-all duration-[120ms]`
+- Hover: transicione apenas as propriedades alteradas, por exemplo `transition-[background,color] duration-120`
 - Press: `active:translate-y-[0.5px]`
 - Dialog enter: `animate-fade-in` (150ms)
 - Toast: `animate-toast-in` (180ms)

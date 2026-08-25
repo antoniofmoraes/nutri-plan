@@ -45,6 +45,23 @@ focus:border-ink (sem glow, sem ring)
 
 ---
 
+## Edição inline
+
+Valor em modo leitura é um `button` (`cursor-text`, `hover:bg-surface-alt`); clicar troca por um input que herda a tipografia do texto original. Usado em quantidade de alimento (`InlineQuantityEdit`, `InlineFoodSwap`) e no nome da refeição pronta (`InlineNameEdit`).
+
+Contrato de comportamento:
+
+- Entrar em edição seleciona o texto atual e move o foco para o input.
+- `Enter` e perda de foco salvam com `trim`; `Escape` cancela e restaura o valor anterior.
+- Valor igual após `trim` fecha sem requisição.
+- Valor inválido não é enviado: o input permanece aberto com `aria-invalid`, `border-danger` e mensagem `role="alert"` em PT-BR. Sair do campo com valor inválido cancela e mantém o valor anterior.
+- Salvamento em voo bloqueia novos commits (`Enter` seguido de blur envia uma requisição só).
+- Falha restaura o valor anterior e emite `toast.error` em PT-BR — nunca deixa o valor otimista na tela.
+- Em modo leitura, o clique no valor não pode disparar a ação do contêiner (expandir card, navegar).
+- O input não pode empurrar ações para fora do card nem gerar scroll horizontal em 375px.
+
+---
+
 ## Badge (status tag)
 
 ```
@@ -99,6 +116,33 @@ Cada tab: `border border-line bg-surface rounded px-2 py-2.5`
 
 ---
 
+## Dialog — origem e alvo de ação destrutiva
+
+Quando o diálogo age sobre uma entidade escolhida fora dele, o `DialogHeader` deve nomear essa entidade, porque ele fica fora da área rolável e permanece visível durante a seleção. Origem e consequência ficam na mesma frase, para serem lidas juntas.
+
+- Conteúdo vindo de dado do usuário no header pede `pr-12` (o botão de fechar é `absolute right-4`, 30px) e `break-words`.
+- O botão primário nomeia o alvo em vez de exibir um número solto: `Aplicar em 3 refeições`, não `Aplicar (3)`. Número em `.num`.
+
+**Confirmação de perda**: quando a ação sobrescreve conteúdo, confirme em uma **etapa dentro do mesmo diálogo** (troca header/body/footer), não em um segundo `Dialog` empilhado — dois modais sobrepostos ficam apertados em 375px, e voltar preserva a seleção de graça por ser o mesmo componente. A etapa só aparece quando existe perda real; sem perda, a ação grava direto.
+
+**Estado por abertura**: o Radix desmonta `DialogContent` ao fechar. Estado que deve nascer limpo a cada abertura mora em um componente **abaixo** dessa fronteira — nunca no componente que controla `open`, que não desmonta. Isso dispensa `useEffect` de reset.
+
+**Rodapé em mobile**: ações do `DialogFooter` usam `className="h-11 sm:h-9"` para cumprir os 44px de alvo de toque.
+
+---
+
+## Toast com Desfazer
+
+Toda mutação de alimento, plano ou refeição confirma o que aconteceu. Quando é reversível, o toast carrega a ação `Desfazer`.
+
+- Use `useUndoToast()` (`hooks/useUndo.ts`): `undoToast(mensagem, undoToken)`.
+- Sem `undoToken`, degrada para `toast.success` comum — é o caso de mutação fora da cobertura de undo.
+- Duração mínima de 8s em toast acionável; o token fica no closure, então toasts empilhados desfazem cada um a sua própria mutação.
+- Desfazer é servidor: `POST /api/undo/{token}`. Falha ou conflito mostra erro em PT-BR e ressincroniza — nunca corrige só o cache.
+- Operação composta (aplicar preset, copiar refeição, copiar alimentos entre refeições prontas) é **uma** chamada de API, para o undo reverter o conjunto inteiro. Não faça laço de mutação no cliente.
+
+---
+
 ## Toast (sonner)
 
 - Posição: bottom-right
@@ -106,6 +150,7 @@ Cada tab: `border border-line bg-surface rounded px-2 py-2.5`
 - Auto-dismiss: 2.8s
 - Ícone: verde (success) ou vermelho (error)
 - Enter: `animate-toast-in`
+- Toast com ação `Desfazer` usa 8s em vez do auto-dismiss padrão — ver acima.
 
 ---
 

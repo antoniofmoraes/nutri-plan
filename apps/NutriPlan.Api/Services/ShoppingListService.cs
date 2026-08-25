@@ -212,34 +212,41 @@ public class ShoppingListService(AppDbContext db)
 
     private async Task SetMealsInternalAsync(ShoppingList list, List<Guid> mealIds, Guid userId)
     {
-        // Validate: all meals must belong to plans the user can read (own or shared with them)
-        var accessibleMealIds = await db.Meals
+        // Carrega as entidades (em vez de projetar só o id) para que o grafo dos vínculos novos
+        // fique completo: BuildResponse lê Meal.IsCheat e Meal.Foods logo depois de salvar, e
+        // sem a refeição rastreada essa navegação viria nula.
+        var accessibleMeals = await db.Meals
+            .Include(m => m.Foods).ThenInclude(mf => mf.Food)
             .Where(m => mealIds.Contains(m.Id)
                 && (m.DayPlan.MealPlan.UserId == userId || m.DayPlan.MealPlan.SharedWithUserId == userId))
-            .Select(m => m.Id)
             .ToListAsync();
 
         var distinctRequested = mealIds.Distinct().ToList();
-        if (accessibleMealIds.Count != distinctRequested.Count)
+        if (accessibleMeals.Count != distinctRequested.Count)
             throw new ApiException("Refeições inválidas na seleção", 400);
 
         // Remove existing
         db.ShoppingListMeals.RemoveRange(list.Meals);
 
         // Add new
-        foreach (var mealId in distinctRequested)
+        foreach (var meal in accessibleMeals)
         {
             db.ShoppingListMeals.Add(new ShoppingListMeal
             {
                 ShoppingListId = list.Id,
-                MealId = mealId
+                MealId = meal.Id,
+                Meal = meal
             });
         }
     }
 
     private static ShoppingListResponse BuildResponse(ShoppingList list, Guid userId)
     {
+        // Refeição livre não gera compra: quem vai comer fora não precisa dos ingredientes.
+        // O vínculo com a lista é mantido — desmarcar "livre" traz os itens de volta sozinho,
+        // porque os alimentos continuam na refeição.
         var aggregated = list.Meals
+            .Where(slm => !slm.Meal.IsCheat)
             .SelectMany(slm => slm.Meal.Foods)
             .GroupBy(mf => mf.FoodId)
             .Select(g => new ShoppingListItemResponse(

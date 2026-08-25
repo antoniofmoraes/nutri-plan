@@ -144,6 +144,8 @@ h2 "Refeições de {dia}" + contagem mono + tabs card variant (`Lista | Timeline
 
 - 2 colunas (`1fr 320px`, collapsa ≤780px)
 - Esquerda: card de itens (checkbox accent + nome + qty/unit mono)
+- **Refeição livre não gera itens.** A agregação ignora `IsCheat`, coerente com o resto do app (macros já pulam refeição livre). O vínculo com a lista é mantido: desmarcar "livre" traz os itens de volta sozinho, porque os alimentos nunca são apagados da refeição.
+- Os itens são agregados **ao vivo** a cada leitura, a partir das refeições vinculadas — a lista não guarda quantidades congeladas. Editar a refeição atualiza a lista.
 - Direita: card de membros (avatar 40px + nome + email mono + role tag)
 
 ---

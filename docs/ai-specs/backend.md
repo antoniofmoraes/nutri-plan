@@ -63,6 +63,15 @@ if (entity.UserId != userId) throw new ApiException("Acesso negado", 403);
 
 ---
 
+## Integração MCP — descoberta OAuth
+
+O servidor MCP fica em `POST /api/mcp` (JSON-RPC), autenticado por OAuth 2.1 com PKCE S256 e Dynamic Client Registration. Duas armadilhas de infraestrutura:
+
+- **As rotas de descoberta vivem na raiz do domínio**, não em `/api` — `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration` e `/.well-known/oauth-protected-resource[/...]` (RFC 8414 e RFC 9728). O `nginx.conf` precisa de um `location` próprio para elas; sem isso caem no fallback do SPA e devolvem HTML, e nenhum cliente MCP consegue se conectar. O padrão é restrito para não capturar `/.well-known/acme-challenge/`.
+- **Defina `PUBLIC_BASE_URL`** (repassada em `docker-compose.yml`). É a origem usada para montar as URLs de descoberta e o header `WWW-Authenticate` do 401. Sem ela o backend adivinha por `X-Forwarded-Proto`/`X-Forwarded-Host`; atrás do proxy do Coolify o `$scheme` do nginx é `http`, e o cliente recusa uma origem `http://`.
+
+---
+
 ## Undo por snapshot
 
 Mutações de alimento, plano e refeição são reversíveis. O mecanismo é único para todos os domínios.

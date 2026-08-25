@@ -1,9 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { toastUndo } from '@/lib/undo';
-import { foodKeys } from './useFoods';
-import { mealPlanKeys } from './useMealPlans';
-import { presetMealKeys } from './usePresetMeals';
+import { foodKeys, mealPlanKeys, presetMealKeys } from '@/lib/queryKeys';
 
 const domainKeys: Record<string, readonly unknown[]> = {
   foods: foodKeys.all,

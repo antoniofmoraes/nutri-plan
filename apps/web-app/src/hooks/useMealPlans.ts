@@ -6,13 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUndoToast } from './useUndo';
 import { toast } from 'sonner';
 import type { Food, PlanGoal } from '@/types';
+import { mealPlanKeys } from '@/lib/queryKeys';
 import type { WithUndo } from '@/lib/api';
 
-export const mealPlanKeys = {
-  all: ['meal-plans'] as const,
-  lists: () => [...mealPlanKeys.all, 'list'] as const,
-  detail: (id: string) => [...mealPlanKeys.all, 'detail', id] as const,
-};
+export { mealPlanKeys } from '@/lib/queryKeys';
 
 export function useMealPlans() {
   const { isAuthenticated } = useAuth();

@@ -1,6 +1,6 @@
 # CHG-004 — Revisitar o fluxo de aplicar refeição pronta
 
-> Status: Pronta  
+> Status: Concluída  
 > Prioridade: P1  
 > Specs afetadas: `screens.md`, `components.md`
 
@@ -92,7 +92,7 @@ Levantados no código atual e tratados como sintomas a resolver, não como requi
 
 ### Não inclui
 
-- Desfazer a aplicação, coberto por [CHG-002](archive/2026-08-25-undo-editing-mutations.md).
+- Desfazer a aplicação, coberto por [CHG-002](2026-08-25-undo-editing-mutations.md).
 - Alterar o contrato de `POST /api/preset-meals/{id}/apply`.
 - Aplicar várias refeições prontas de uma vez.
 - Mudar o fluxo equivalente de copiar refeição dentro do plano.
@@ -120,15 +120,15 @@ Verificar se D9 deixa de importar ou vira validação explícita, e se as decis�
 
 ## Tarefas
 
-- [ ] **T1.** [R1–R11] Mapear o fluxo atual ponta a ponta e confirmar D1–D9 em execução, registrando quais são reproduzíveis. D1 já confirmado em 2026-08-25.
-- [x] **T2.** Produzir e aprovar [`004-rework-apply-preset-flow.design.md`](004-rework-apply-preset-flow.design.md) antes de alterar componentes.
-- [ ] **T3.** [R1, R2] Corrigir a derivação de estado do diálogo, incluindo seleção limpa por abertura e plano padrão resiliente ao carregamento.
-- [ ] **T4.** [R3, R4, R6] Implementar a leitura do que será aplicado e do estado atual de cada refeição alvo.
-- [ ] **T5.** [R5, R8, R11] Implementar a confirmação de sobrescrita (estendendo `ConfirmDialog` com `children`), o bloqueio de refeição livre e o tratamento de falha sem fechar o diálogo.
+- [x] **T1.** [R1–R11] Mapear o fluxo atual ponta a ponta e confirmar D1–D9 em execução, registrando quais são reproduzíveis. D1 já confirmado em 2026-08-25.
+- [x] **T2.** Produzir e aprovar [`004-rework-apply-preset-flow.design.md`](2026-08-25-rework-apply-preset-flow.design.md) antes de alterar componentes.
+- [x] **T3.** [R1, R2] Corrigir a derivação de estado do diálogo, incluindo seleção limpa por abertura e plano padrão resiliente ao carregamento.
+- [x] **T4.** [R3, R4, R6] Implementar a leitura do que será aplicado e do estado atual de cada refeição alvo.
+- [x] **T5.** [R5, R8, R11] Implementar a confirmação de sobrescrita (estendendo `ConfirmDialog` com `children`), o bloqueio de refeição livre e o tratamento de falha sem fechar o diálogo.
 - [x] **T6.** [R7] Feedback de sucesso da aplicação entregue pela CHG-002 (`useUndoToast`), já citando a quantidade de refeições atualizadas.
-- [ ] **T7.** [R9] Verificar teclado, alvos de toque e layout em 375px, 900px, 1024px e 1440px.
-- [ ] **T8.** [R1–R10] Cobrir com testes a limpeza de estado entre aberturas e o caminho de sobrescrita.
-- [ ] **T9.** Atualizar `screens.md` e `components.md` e arquivar esta mudança. A CHG-003 já foi entregue e incorporada: o diálogo já identifica o preset de origem e o botão primário já nomeia o alvo, então não repita esse escopo.
+- [x] **T7.** [R9] Verificar teclado, alvos de toque e layout em 375px, 900px, 1024px e 1440px.
+- [x] **T8.** [R1–R10] Cobrir com testes a limpeza de estado entre aberturas e o caminho de sobrescrita.
+- [x] **T9.** Atualizar `screens.md` e `components.md` e arquivar esta mudança. A CHG-003 já foi entregue e incorporada: o diálogo já identifica o preset de origem e o botão primário já nomeia o alvo, então não repita esse escopo.
 
 ## Verificação
 

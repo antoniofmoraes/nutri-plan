@@ -121,7 +121,14 @@ h2 "Refeições de {dia}" + contagem mono + tabs card variant (`Lista | Timeline
 - Botão primário informa o alvo: `Aplicar` (desabilitado, nada selecionado), `Aplicar em 1 refeição`, `Aplicar em N refeições` — o número em `.num`.
 - O preset é derivado da lista pelo id, não copiado para estado: renomear reflete no diálogo aberto e excluir fecha o diálogo.
 
-> Mudança planejada: [CHG-004 — revisitar o fluxo de aplicar](changes/004-rework-apply-preset-flow.md).
+- Prévia do que será aplicado (macros + lista de alimentos) no topo do corpo, para não precisar fechar o diálogo.
+- Cada célula da grade indica o estado atual da refeição: `vazia`, contagem de alimentos, ou `livre`. Os dados já vêm de `GET /api/meal-plans` — nenhuma chamada extra. Ativado por `showMealState` no `MealSlotGrid`; os outros consumidores da grade não mudam.
+- Plano alvo é derivado (`escolhido ?? isMain ?? primeiro`), nunca inicializado uma vez em estado — assim funciona mesmo entrando direto na rota, sem cache. Trocar de plano limpa a seleção **com aviso**.
+- Sobrescrever refeição que já tem alimentos exige uma etapa de confirmação **dentro do mesmo diálogo**, nomeando refeição pronta, plano e listando as refeições afetadas. Só refeições vazias aplicam direto — o caminho comum não ganha passo.
+- Refeição marcada como livre bloqueia a aplicação com aviso que a identifica; desmarcar libera. Não existe modo de acrescentar sem apagar.
+- Falha mantém o diálogo aberto com a seleção e explica o erro; sucesso emite toast com `Desfazer`.
+- O estado de seleção mora abaixo do `DialogContent`, que o Radix desmonta ao fechar — cada abertura nasce limpa, sem efeito de reset.
+- Checkboxes da grade têm nome acessível (`{refeição} · {dia}`). Botões do rodapé usam `h-11 sm:h-9` para cumprir 44px de toque em mobile.
 
 ---
 

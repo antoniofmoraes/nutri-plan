@@ -1,15 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { presetMealService } from '@/services/presetMealService';
 import { useAuth } from '@/contexts/AuthContext';
-import { mealPlanKeys } from './useMealPlans';
+import { mealPlanKeys, presetMealKeys } from '@/lib/queryKeys';
 import { useUndoToast } from './useUndo';
 import type { Food } from '@/types';
 import type { WithUndo } from '@/lib/api';
 
-export const presetMealKeys = {
-  all: ['preset-meals'] as const,
-  lists: () => [...presetMealKeys.all, 'list'] as const,
-};
+export { presetMealKeys } from '@/lib/queryKeys';
 
 export function usePresetMeals() {
   const { isAuthenticated } = useAuth();

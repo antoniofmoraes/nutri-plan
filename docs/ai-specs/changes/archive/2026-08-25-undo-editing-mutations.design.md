@@ -119,7 +119,7 @@ Toasts informativos sem undo continuam com o auto-dismiss atual.
 - Todo service coberto passa a gravar snapshot antes da mutação — custo aceitável na escala atual.
 - `UndoService` novo + `MapGroup("/api/undo")`, seguindo o padrão Minimal API + Service.
 - Frontend: helper `toastUndo` + hook de undo; hooks de domínio passam a devolver o `undoToken` da mutação.
-- Interage com a [CHG-004](../004-rework-apply-preset-flow.md): o toast de sucesso de aplicar preset (R7 de lá) é onde a ação `Desfazer` se pendura. O snapshot de aplicar precisa incluir alimentos **e** `IsCheat` de cada alvo.
+- Interage com a [CHG-004](2026-08-25-rework-apply-preset-flow.md): o toast de sucesso de aplicar preset (R7 de lá) é onde a ação `Desfazer` se pendura. O snapshot de aplicar precisa incluir alimentos **e** `IsCheat` de cada alvo.
 
 ## Decisões tomadas em 2026-08-25
 

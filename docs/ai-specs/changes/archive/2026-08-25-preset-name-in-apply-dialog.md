@@ -45,7 +45,7 @@ O diálogo de aplicar não diz qual refeição pronta está sendo aplicada. O t�
 
 ### Não inclui
 
-- Redesenho do fluxo de aplicar, tratado em [CHG-004](../004-rework-apply-preset-flow.md).
+- Redesenho do fluxo de aplicar, tratado em [CHG-004](2026-08-25-rework-apply-preset-flow.md).
 - Pré-visualização dos alimentos da refeição pronta.
 - Mudança no contrato da API.
 

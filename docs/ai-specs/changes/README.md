@@ -4,9 +4,7 @@ Deltas de comportamento ainda não incorporados às specs vigentes. Cada arquivo
 
 ## Índice ativo
 
-| ID | Mudança | Status | Prioridade |
-|---|---|---|---|
-| CHG-004 | [Revisitar o fluxo de aplicar refeição pronta](004-rework-apply-preset-flow.md) | Pronta ([design](004-rework-apply-preset-flow.design.md)) | P1 |
+Nenhuma mudança em aberto.
 
 ## Concluídas
 
@@ -15,6 +13,7 @@ Deltas de comportamento ainda não incorporados às specs vigentes. Cada arquivo
 | CHG-001 | [Editar nome da refeição pronta inline](archive/2026-08-25-edit-preset-name-inline.md) | 2026-08-25 |
 | CHG-002 | [Desfazer mutações de alimentos, planos e refeições](archive/2026-08-25-undo-editing-mutations.md) | 2026-08-25 |
 | CHG-003 | [Identificar a refeição pronta no diálogo de aplicar](archive/2026-08-25-preset-name-in-apply-dialog.md) | 2026-08-25 |
+| CHG-004 | [Revisitar o fluxo de aplicar refeição pronta](archive/2026-08-25-rework-apply-preset-flow.md) | 2026-08-25 |
 
 ## Estados
 

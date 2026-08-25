@@ -4,12 +4,10 @@ import { foodService } from '@/services/foodService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUndoToast } from './useUndo';
 import type { Food } from '@/types';
+import { foodKeys } from '@/lib/queryKeys';
 import type { WithUndo } from '@/lib/api';
 
-export const foodKeys = {
-  all: ['foods'] as const,
-  list: (params?: Record<string, unknown>) => [...foodKeys.all, 'list', params] as const,
-};
+export { foodKeys } from '@/lib/queryKeys';
 
 export function useAllFoods() {
   const { isAuthenticated } = useAuth();

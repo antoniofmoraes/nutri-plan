@@ -1,7 +1,7 @@
 # CHG-004 — Design técnico
 
-> Decisão de: [004-rework-apply-preset-flow.md](004-rework-apply-preset-flow.md)
-> Status: proposto em 2026-08-25
+> Decisão de: [004-rework-apply-preset-flow.md](2026-08-25-rework-apply-preset-flow.md)
+> Status: implementado em 2026-08-25
 
 ## Resumo
 
@@ -86,16 +86,19 @@ A célula segue clicável no estado livre — R11 exige que dê para **desmarcar
 
 ## 4. Confirmação de sobrescrita
 
-**Decisão: diálogo próprio, empilhado sobre o de aplicar.**
+**Decisão revista na implementação: etapa dentro do mesmo diálogo, não um segundo modal empilhado.**
 
-Não é um passo do fluxo: é uma porta que só aparece quando há perda. Conteúdo, conforme R5:
+> Registro honesto de como isso mudou: na verificação, cancelar a confirmação aninhada deixava `body` com `pointer-events: none`, o que parecia travar o diálogo de baixo. **Isso era artefato do ambiente** — a pane do navegador não compunha frames, as animações CSS ficavam congeladas em `currentTime: 0`, `animationend` nunca disparava e o Radix Presence nunca desmontava o nó. Com as animações desligadas, o aninhamento provavelmente funcionaria.
+>
+> Mantive a etapa embutida mesmo assim, por mérito e não pelo sinal falso: dois modais sobrepostos ficam apertados em 375px, e "Voltar" preserva a seleção sem esforço por ser o mesmo componente. `ConfirmDialog` ficou sem a extensão `children`, que deixou de ser necessária.
+
+A etapa troca header, corpo e rodapé do diálogo. Não é um passo do fluxo: é uma porta que só aparece quando há perda. Conteúdo, conforme R5:
 
 - a refeição pronta de origem, por nome;
 - o plano alimentar que vai receber;
 - a lista das refeições que serão substituídas (dia + slot), não só a contagem;
-- ação destrutiva confirmando, cancelar voltando ao diálogo de aplicar **com a seleção intacta**.
-
-`ConfirmDialog` hoje só aceita `description: string`, então não consegue renderizar a lista. Ele já tem exatamente a casca certa (`variant="danger"`, Cancelar/Confirmar, fecha ao confirmar), então **estender é menor que duplicar**: adicionar `children?: ReactNode`, renderizado em um `DialogBody` entre header e footer quando presente. Mudança retrocompatível — os 8 usos atuais, em 6 páginas, não passam `children` e não mudam. Não é abstração nova, é o mesmo componente aceitando corpo.
+- quantas das selecionadas estão vazias e só recebem, para a consequência não parecer maior do que é;
+- `Substituir` (variante `danger`) confirmando, `Voltar` retornando à seleção **intacta**.
 
 ## 5. Refeição livre — bloqueio (R11)
 
@@ -115,7 +118,7 @@ Vira **validação explícita**: antes de submeter, o formulário filtra a sele�
 
 ## 7. Interação com CHG-002 (undo)
 
-Aplicar é uma mutação composta e está na matriz de cobertura da [CHG-002](archive/2026-08-25-undo-editing-mutations.md). Esta mudança entrega o toast de sucesso de R7 nomeando a refeição pronta e a quantidade de refeições atualizadas; ele é o ponto onde a CHG-002 vai pendurar a ação `Desfazer`.
+Aplicar é uma mutação composta e está na matriz de cobertura da [CHG-002](2026-08-25-undo-editing-mutations.md). Esta mudança entrega o toast de sucesso de R7 nomeando a refeição pronta e a quantidade de refeições atualizadas; ele é o ponto onde a CHG-002 vai pendurar a ação `Desfazer`.
 
 Duas notas para o design de undo:
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, BookCopy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -30,8 +31,9 @@ export default function PresetMeals() {
     applyPreset,
   } = usePresetMeals();
   const { foods } = useAllFoods();
-  const { mealPlans } = useMealPlans();
+  const { mealPlans, isLoading: isLoadingPlans } = useMealPlans();
 
+  const navigate = useNavigate();
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [presetName, setPresetName] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export default function PresetMeals() {
     await addFoodToPreset(foodDialogPresetId, food, quantity);
   };
 
+  // Sem try/catch: o diálogo trata a falha para manter a seleção e continuar aberto (R8).
   const handleApply = async (_planId: string, mealIds: string[]) => {
     if (!applyPresetId) return;
     await applyPreset(applyPresetId, mealIds);
@@ -185,7 +188,9 @@ export default function PresetMeals() {
         onOpenChange={(open) => { if (!open) setApplyPresetId(null); }}
         preset={presetToApply}
         mealPlans={mealPlans}
+        isLoadingPlans={isLoadingPlans}
         onApply={handleApply}
+        onCreatePlan={() => navigate('/planos')}
       />
     </div>
   );

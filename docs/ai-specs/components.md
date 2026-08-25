@@ -123,6 +123,12 @@ Quando o diálogo age sobre uma entidade escolhida fora dele, o `DialogHeader` d
 - Conteúdo vindo de dado do usuário no header pede `pr-12` (o botão de fechar é `absolute right-4`, 30px) e `break-words`.
 - O botão primário nomeia o alvo em vez de exibir um número solto: `Aplicar em 3 refeições`, não `Aplicar (3)`. Número em `.num`.
 
+**Confirmação de perda**: quando a ação sobrescreve conteúdo, confirme em uma **etapa dentro do mesmo diálogo** (troca header/body/footer), não em um segundo `Dialog` empilhado — dois modais sobrepostos ficam apertados em 375px, e voltar preserva a seleção de graça por ser o mesmo componente. A etapa só aparece quando existe perda real; sem perda, a ação grava direto.
+
+**Estado por abertura**: o Radix desmonta `DialogContent` ao fechar. Estado que deve nascer limpo a cada abertura mora em um componente **abaixo** dessa fronteira — nunca no componente que controla `open`, que não desmonta. Isso dispensa `useEffect` de reset.
+
+**Rodapé em mobile**: ações do `DialogFooter` usam `className="h-11 sm:h-9"` para cumprir os 44px de alvo de toque.
+
 ---
 
 ## Toast com Desfazer

@@ -6,7 +6,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class MealFoodService(AppDbContext db)
+public class MealFoodService(AppDbContext db, UndoService undo)
 {
     public async Task<List<MealFoodResponse>> GetMealFoodsAsync(Guid mealId, Guid userId)
     {
@@ -30,29 +30,35 @@ public class MealFoodService(AppDbContext db)
         if (food is null)
             throw new ApiException("Alimento não encontrado", 404);
 
+        var before = await undo.CaptureMealsAsync([mealId]);
+
         var existing = await db.MealFoods
             .Include(mf => mf.Food)
             .FirstOrDefaultAsync(mf => mf.MealId == mealId && mf.FoodId == request.FoodId);
 
+        MealFood result;
         if (existing is not null)
         {
             existing.Quantity = request.Quantity;
             await db.SaveChangesAsync();
-            return ToResponse(existing);
+            result = existing;
+        }
+        else
+        {
+            result = new MealFood
+            {
+                MealId = mealId,
+                FoodId = request.FoodId,
+                Quantity = request.Quantity
+            };
+
+            db.MealFoods.Add(result);
+            await db.SaveChangesAsync();
+            result.Food = food;
         }
 
-        var mealFood = new MealFood
-        {
-            MealId = mealId,
-            FoodId = request.FoodId,
-            Quantity = request.Quantity
-        };
-
-        db.MealFoods.Add(mealFood);
-        await db.SaveChangesAsync();
-
-        mealFood.Food = food;
-        return ToResponse(mealFood);
+        await undo.RecordAsync(userId, before);
+        return ToResponse(result);
     }
 
     public async Task<MealFoodResponse> UpdateMealFoodAsync(Guid mealId, Guid foodId, Guid userId, Guid? newFoodId, double? quantity)
@@ -69,10 +75,13 @@ public class MealFoodService(AppDbContext db)
         var targetQuantity = quantity ?? mealFood.Quantity;
         var targetFoodId = newFoodId ?? foodId;
 
+        var before = await undo.CaptureMealsAsync([mealId]);
+
         if (targetFoodId == foodId)
         {
             mealFood.Quantity = targetQuantity;
             await db.SaveChangesAsync();
+            await undo.RecordAsync(userId, before);
             return ToResponse(mealFood);
         }
 
@@ -110,6 +119,7 @@ public class MealFoodService(AppDbContext db)
 
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        await undo.RecordAsync(userId, before);
         return ToResponse(result);
     }
 
@@ -123,8 +133,11 @@ public class MealFoodService(AppDbContext db)
         if (mealFood is null)
             throw new ApiException("Alimento não está na refeição", 404);
 
+        var before = await undo.CaptureMealsAsync([mealId]);
+
         db.MealFoods.Remove(mealFood);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     private async Task<Meal> GetMealWithOwnership(Guid mealId, Guid userId)

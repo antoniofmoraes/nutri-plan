@@ -10,7 +10,6 @@ interface PresetNameDialogProps {
   onOpenChange: (open: boolean) => void;
   name: string;
   onNameChange: (name: string) => void;
-  isEditing: boolean;
   onSubmit: () => void;
 }
 
@@ -19,19 +18,14 @@ export function PresetNameDialog({
   onOpenChange,
   name,
   onNameChange,
-  isEditing,
   onSubmit,
 }: PresetNameDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Renomear refeição pronta' : 'Nova refeição pronta'}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing ? 'Altere o nome da refeição.' : 'Dê um nome para a refeição.'}
-          </DialogDescription>
+          <DialogTitle>Nova refeição pronta</DialogTitle>
+          <DialogDescription>Dê um nome para a refeição.</DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div>
@@ -49,7 +43,7 @@ export function PresetNameDialog({
             <Button variant="ghost">Cancelar</Button>
           </DialogClose>
           <Button variant="acc" onClick={onSubmit} disabled={!name.trim()}>
-            {isEditing ? 'Salvar' : 'Criar'}
+            Criar
           </Button>
         </DialogFooter>
       </DialogContent>

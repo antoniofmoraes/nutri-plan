@@ -3,7 +3,10 @@ import { mealPlanService } from '@/services/mealPlanService';
 import { mealPlanShareService } from '@/services/mealPlanShareService';
 import { presetMealService } from '@/services/presetMealService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUndoToast } from './useUndo';
+import { toast } from 'sonner';
 import type { Food, PlanGoal } from '@/types';
+import type { WithUndo } from '@/lib/api';
 
 export const mealPlanKeys = {
   all: ['meal-plans'] as const,
@@ -14,12 +17,20 @@ export const mealPlanKeys = {
 export function useMealPlans() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const undoToast = useUndoToast();
 
   const query = useQuery({
     queryKey: mealPlanKeys.lists(),
     queryFn: () => mealPlanService.getAll(),
     enabled: isAuthenticated,
   });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.all });
+
+  const announce = (message: string) => (result: WithUndo<unknown>) => {
+    invalidate();
+    undoToast(message, result.undoToken);
+  };
 
   const create = useMutation({
     mutationFn: (input: {
@@ -30,7 +41,7 @@ export function useMealPlans() {
       dailyCarbs?: number | null;
       dailyFat?: number | null;
     }) => mealPlanService.create(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.all }),
+    onSuccess: announce('Plano criado'),
   });
 
   const update = useMutation({
@@ -45,17 +56,17 @@ export function useMealPlans() {
         dailyFat?: number | null;
       };
     }) => mealPlanService.update(id, updates),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.all }),
+    onSuccess: announce('Plano atualizado'),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => mealPlanService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.all }),
+    onSuccess: announce('Plano excluído'),
   });
 
   const setMain = useMutation({
     mutationFn: (planId: string | null) => mealPlanService.setMainPlan(planId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.all }),
+    onSuccess: (_r, planId) => { invalidate(); toast.success(planId ? 'Plano definido como principal' : 'Plano principal removido'); },
   });
 
   return {
@@ -73,6 +84,7 @@ export function useMealPlans() {
 export function useMealPlan(id: string | undefined) {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const undoToast = useUndoToast();
 
   const query = useQuery({
     queryKey: mealPlanKeys.detail(id!),
@@ -85,62 +97,74 @@ export function useMealPlan(id: string | undefined) {
     queryClient.invalidateQueries({ queryKey: mealPlanKeys.lists() });
   };
 
+  const announcePlan = (message: string) => (result: WithUndo<unknown>) => {
+    invalidatePlan();
+    undoToast(message, result.undoToken);
+  };
+
   const addSlotMut = useMutation({
     mutationFn: (input: { name: string; time?: string }) =>
       mealPlanService.addSlot(id!, input),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Refeição adicionada'),
   });
 
   const updateSlotMut = useMutation({
     mutationFn: ({ slotId, updates }: { slotId: string; updates: { name?: string; time?: string } }) =>
       mealPlanService.updateSlot(id!, slotId, updates),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Refeição atualizada'),
   });
 
   const deleteSlotMut = useMutation({
     mutationFn: (slotId: string) => mealPlanService.deleteSlot(id!, slotId),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Refeição excluída'),
   });
 
   const reorderSlotsMut = useMutation({
     mutationFn: (slotIds: string[]) => mealPlanService.reorderSlots(id!, slotIds),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Ordem atualizada'),
   });
 
   const addFoodToMealMut = useMutation({
     mutationFn: ({ mealId, foodId, quantity }: { mealId: string; foodId: string; quantity: number }) =>
       mealPlanService.addFoodToMeal(mealId, { foodId, quantity }),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Alimento adicionado'),
   });
 
   const removeFoodFromMealMut = useMutation({
     mutationFn: ({ mealId, foodId }: { mealId: string; foodId: string }) =>
       mealPlanService.removeFoodFromMeal(mealId, foodId),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Alimento removido'),
   });
 
   const updateMealFoodMut = useMutation({
     mutationFn: ({ mealId, foodId, updates }: { mealId: string; foodId: string; updates: { newFoodId?: string; quantity?: number } }) =>
       mealPlanService.updateMealFood(mealId, foodId, updates),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Alimento atualizado'),
   });
 
   const setMealCheatMut = useMutation({
     mutationFn: ({ mealId, isCheat }: { mealId: string; isCheat: boolean }) =>
       mealPlanService.setMealCheat(mealId, isCheat),
-    onSuccess: invalidatePlan,
+    onSuccess: (result, { isCheat }) => {
+      invalidatePlan();
+      undoToast(isCheat ? 'Refeição marcada como livre' : 'Marcação de livre removida', result.undoToken);
+    },
   });
 
   const copyMealMut = useMutation({
     mutationFn: ({ sourceMealId, targetMealIds }: { sourceMealId: string; targetMealIds: string[] }) =>
       mealPlanService.copyMeal(sourceMealId, targetMealIds),
-    onSuccess: invalidatePlan,
+    onSuccess: announcePlan('Refeição copiada'),
   });
 
   const applyPresetMut = useMutation({
     mutationFn: ({ presetId, targetMealIds }: { presetId: string; targetMealIds: string[] }) =>
       presetMealService.apply(presetId, targetMealIds),
-    onSuccess: invalidatePlan,
+    onSuccess: (result, { targetMealIds }) => {
+      invalidatePlan();
+      const count = targetMealIds.length;
+      undoToast(`Aplicada em ${count} ${count === 1 ? 'refeição' : 'refeições'}`, result.undoToken);
+    },
   });
 
   return {

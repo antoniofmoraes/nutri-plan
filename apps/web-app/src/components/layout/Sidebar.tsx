@@ -139,7 +139,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-10 h-14 px-3.5 border-b border-line bg-bg items-center gap-3 hidden max-[900px]:flex">
+      <div className="sticky top-0 z-10 h-14 px-3.5 border-b border-line bg-bg items-center gap-3 hidden max-lg:flex">
         <button
           onClick={() => setDrawerOpen(true)}
           className="w-9 h-9 rounded-lg bg-transparent border border-line grid place-items-center text-ink"
@@ -153,7 +153,7 @@ export function Sidebar() {
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="hidden min-[901px]:flex border-r border-line bg-paper h-screen sticky top-0 flex-col overflow-hidden w-64">
+      <aside className="hidden lg:flex border-r border-line bg-paper h-screen sticky top-0 flex-col overflow-hidden w-64">
         <SidebarBody />
       </aside>
 

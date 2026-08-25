@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OAuthClient> OAuthClients => Set<OAuthClient>();
     public DbSet<OAuthAuthorizationCode> OAuthAuthorizationCodes => Set<OAuthAuthorizationCode>();
     public DbSet<OAuthAccessToken> OAuthAccessTokens => Set<OAuthAccessToken>();
+    public DbSet<UndoEntry> UndoEntries => Set<UndoEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +33,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithOne()
                 .HasForeignKey<User>(u => u.MainMealPlanId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<UndoEntry>(entity =>
+        {
+            entity.HasIndex(ue => new { ue.UserId, ue.ExpiresAt });
+            entity.HasOne(ue => ue.User)
+                .WithMany()
+                .HasForeignKey(ue => ue.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<MealPlan>(entity =>

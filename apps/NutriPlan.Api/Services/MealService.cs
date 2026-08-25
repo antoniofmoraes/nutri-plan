@@ -6,7 +6,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class MealService(AppDbContext db)
+public class MealService(AppDbContext db, UndoService undo)
 {
     public async Task<List<MealResponse>> GetMealsForDayAsync(Guid planId, string day, Guid userId)
     {
@@ -48,6 +48,8 @@ public class MealService(AppDbContext db)
 
         var sourceItems = source.Foods.Select(sf => (sf.FoodId, sf.Quantity)).ToList();
 
+        var before = await undo.CaptureMealsAsync(targets.Select(t => t.Id));
+
         foreach (var target in targets)
         {
             target.AssertEditAccess(userId);
@@ -60,6 +62,7 @@ public class MealService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     public async Task<MealResponse> SetCheatAsync(Guid mealId, Guid userId, bool isCheat)
@@ -88,8 +91,11 @@ public class MealService(AppDbContext db)
                 throw new ApiException("Pelo menos um dia dessa refeição precisa ter alimentos cadastrados (não pode marcar todos como livre)", 400);
         }
 
+        var before = await undo.CaptureMealsAsync([mealId]);
+
         meal.IsCheat = isCheat;
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
         return ToMealResponse(meal);
     }
 

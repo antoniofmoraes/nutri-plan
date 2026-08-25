@@ -5,11 +5,12 @@ import {
   DialogBody, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
 import { MealSlotGrid } from '@/components/shared/MealSlotGrid';
-import type { MealPlan } from '@/types';
+import type { MealPlan, PresetMeal } from '@/types';
 
 interface ApplyPresetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preset: PresetMeal | null;
   mealPlans: MealPlan[];
   onApply: (planId: string, mealIds: string[]) => void;
 }
@@ -17,6 +18,7 @@ interface ApplyPresetDialogProps {
 export function ApplyPresetDialog({
   open,
   onOpenChange,
+  preset,
   mealPlans,
   onApply,
 }: ApplyPresetDialogProps) {
@@ -71,10 +73,13 @@ export function ApplyPresetDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent lg>
-        <DialogHeader>
+        {/* pr-12 reserva o botão de fechar (absolute right-4, 30px), que sobrepõe o header */}
+        <DialogHeader className="pr-12">
           <DialogTitle>Aplicar refeição pronta</DialogTitle>
           <DialogDescription>
-            Selecione em quais refeições da semana deseja aplicar. Os alimentos existentes serão substituídos.
+            Selecione as refeições da semana que vão receber{' '}
+            <span className="font-medium text-ink break-words">“{preset?.name}”</span>. Os
+            alimentos que já existirem nelas serão substituídos.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,7 +118,14 @@ export function ApplyPresetDialog({
             onClick={handleApply}
             disabled={selectedMealIds.size === 0}
           >
-            Aplicar ({selectedMealIds.size})
+            {selectedMealIds.size === 0 ? (
+              'Aplicar'
+            ) : (
+              <>
+                Aplicar em <span className="num">{selectedMealIds.size}</span>{' '}
+                {selectedMealIds.size === 1 ? 'refeição' : 'refeições'}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

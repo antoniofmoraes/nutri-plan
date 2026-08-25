@@ -6,6 +6,14 @@ interface ApiResponse<T = unknown> {
   error?: string;
   message?: string;
   details?: Array<{ field: string; message: string }>;
+  undoToken?: string;
+}
+
+/// Resultado que carrega o token de undo da mutação. Cada chamada devolve o seu, então
+/// mutações concorrentes não trocam de token — ver R8 da CHG-002.
+export interface WithUndo<T> {
+  data: T;
+  undoToken?: string;
 }
 
 class ApiError extends Error {
@@ -31,10 +39,14 @@ function removeToken(): void {
   localStorage.removeItem('token');
 }
 
-async function request<T>(
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  return (await requestFull<T>(endpoint, options)).data;
+}
+
+async function requestFull<T>(
   endpoint: string,
   options: RequestInit = {}
-): Promise<T> {
+): Promise<WithUndo<T>> {
   const token = getToken();
 
   const headers: HeadersInit = {
@@ -61,7 +73,7 @@ async function request<T>(
     );
   }
 
-  return json.data as T;
+  return { data: json.data as T, undoToken: json.undoToken };
 }
 
 export const api = {
@@ -86,6 +98,30 @@ export const api = {
     }),
 
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+};
+
+/// Mesmas rotas do `api`, mas devolvendo `{ data, undoToken }`. Use nas mutações que
+/// oferecem "Desfazer"; para o resto, `api` continua mais simples.
+export const apiUndo = {
+  post: <T>(endpoint: string, data?: unknown) =>
+    requestFull<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  patch: <T>(endpoint: string, data?: unknown) =>
+    requestFull<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  put: <T>(endpoint: string, data?: unknown) =>
+    requestFull<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  delete: <T>(endpoint: string) => requestFull<T>(endpoint, { method: 'DELETE' }),
 };
 
 export { getToken, setToken, removeToken, ApiError };

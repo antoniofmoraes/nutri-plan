@@ -1,4 +1,4 @@
-import { api, getToken } from '@/lib/api';
+import { api, apiUndo, getToken, type WithUndo } from '@/lib/api';
 import { MealPlan, MealSlot, WeekDay, Food } from '@/types';
 
 interface ApiMealFood {
@@ -148,18 +148,18 @@ export const mealPlanService = {
     return transformMealPlan(plan);
   },
 
-  async create(input: CreateMealPlanInput): Promise<MealPlan> {
-    const plan = await api.post<ApiMealPlan>('/api/meal-plans', input);
-    return transformMealPlan(plan);
+  async create(input: CreateMealPlanInput): Promise<WithUndo<MealPlan>> {
+    const { data, undoToken } = await apiUndo.post<ApiMealPlan>('/api/meal-plans', input);
+    return { data: transformMealPlan(data), undoToken };
   },
 
-  async update(id: string, input: UpdateMealPlanInput): Promise<MealPlan> {
-    const plan = await api.patch<ApiMealPlan>(`/api/meal-plans/${id}`, input);
-    return transformMealPlan(plan);
+  async update(id: string, input: UpdateMealPlanInput): Promise<WithUndo<MealPlan>> {
+    const { data, undoToken } = await apiUndo.patch<ApiMealPlan>(`/api/meal-plans/${id}`, input);
+    return { data: transformMealPlan(data), undoToken };
   },
 
-  async delete(id: string): Promise<void> {
-    await api.delete(`/api/meal-plans/${id}`);
+  async delete(id: string): Promise<WithUndo<void>> {
+    return apiUndo.delete(`/api/meal-plans/${id}`);
   },
 
   async setMainPlan(planId: string | null): Promise<void> {
@@ -167,41 +167,41 @@ export const mealPlanService = {
   },
 
   // Slot operations (plan-level)
-  async addSlot(planId: string, input: CreateSlotInput): Promise<MealSlot> {
-    return api.post<MealSlot>(`/api/meal-plans/${planId}/slots`, input);
+  async addSlot(planId: string, input: CreateSlotInput): Promise<WithUndo<MealSlot>> {
+    return apiUndo.post<MealSlot>(`/api/meal-plans/${planId}/slots`, input);
   },
 
-  async updateSlot(planId: string, slotId: string, input: UpdateSlotInput): Promise<MealSlot> {
-    return api.patch<MealSlot>(`/api/meal-plans/${planId}/slots/${slotId}`, input);
+  async updateSlot(planId: string, slotId: string, input: UpdateSlotInput): Promise<WithUndo<MealSlot>> {
+    return apiUndo.patch<MealSlot>(`/api/meal-plans/${planId}/slots/${slotId}`, input);
   },
 
-  async deleteSlot(planId: string, slotId: string): Promise<void> {
-    await api.delete(`/api/meal-plans/${planId}/slots/${slotId}`);
+  async deleteSlot(planId: string, slotId: string): Promise<WithUndo<void>> {
+    return apiUndo.delete(`/api/meal-plans/${planId}/slots/${slotId}`);
   },
 
-  async reorderSlots(planId: string, slotIds: string[]): Promise<void> {
-    await api.put(`/api/meal-plans/${planId}/slots/order`, { slotIds });
+  async reorderSlots(planId: string, slotIds: string[]): Promise<WithUndo<void>> {
+    return apiUndo.put(`/api/meal-plans/${planId}/slots/order`, { slotIds });
   },
 
-  async setMealCheat(mealId: string, isCheat: boolean): Promise<void> {
-    await api.patch(`/api/meals/${mealId}/cheat`, { isCheat });
+  async setMealCheat(mealId: string, isCheat: boolean): Promise<WithUndo<void>> {
+    return apiUndo.patch(`/api/meals/${mealId}/cheat`, { isCheat });
   },
 
-  async copyMeal(mealId: string, targetMealIds: string[]): Promise<void> {
-    await api.post(`/api/meals/${mealId}/copy`, { targetMealIds });
+  async copyMeal(mealId: string, targetMealIds: string[]): Promise<WithUndo<void>> {
+    return apiUndo.post(`/api/meals/${mealId}/copy`, { targetMealIds });
   },
 
   // Meal food operations
-  async addFoodToMeal(mealId: string, input: AddFoodToMealInput): Promise<void> {
-    await api.post(`/api/meals/${mealId}/foods`, input);
+  async addFoodToMeal(mealId: string, input: AddFoodToMealInput): Promise<WithUndo<void>> {
+    return apiUndo.post(`/api/meals/${mealId}/foods`, input);
   },
 
-  async removeFoodFromMeal(mealId: string, foodId: string): Promise<void> {
-    await api.delete(`/api/meals/${mealId}/foods/${foodId}`);
+  async removeFoodFromMeal(mealId: string, foodId: string): Promise<WithUndo<void>> {
+    return apiUndo.delete(`/api/meals/${mealId}/foods/${foodId}`);
   },
 
-  async updateMealFood(mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }): Promise<void> {
-    await api.patch(`/api/meals/${mealId}/foods/${foodId}`, updates);
+  async updateMealFood(mealId: string, foodId: string, updates: { newFoodId?: string; quantity?: number }): Promise<WithUndo<void>> {
+    return apiUndo.patch(`/api/meals/${mealId}/foods/${foodId}`, updates);
   },
 
   async copyMarkdownExport(planId: string): Promise<void> {

@@ -6,7 +6,7 @@ using NutriPlan.Api.Models;
 
 namespace NutriPlan.Api.Services;
 
-public class PresetMealService(AppDbContext db)
+public class PresetMealService(AppDbContext db, UndoService undo)
 {
     public async Task<List<PresetMealResponse>> GetAllByUserAsync(Guid userId)
     {
@@ -32,8 +32,11 @@ public class PresetMealService(AppDbContext db)
             UserId = userId
         };
 
+        var before = await undo.CapturePresetMealsAsync([preset.Id]);
+
         db.PresetMeals.Add(preset);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
 
         return ToResponse(preset);
     }
@@ -42,9 +45,12 @@ public class PresetMealService(AppDbContext db)
     {
         var preset = await GetPresetWithOwnership(id, userId, includeFoods: true);
 
+        var before = await undo.CapturePresetMealsAsync([id]);
+
         if (request.Name is not null) preset.Name = request.Name;
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
         return ToResponse(preset);
     }
 
@@ -57,6 +63,8 @@ public class PresetMealService(AppDbContext db)
             Name = $"{source.Name} (cópia)",
             UserId = userId
         };
+        var before = await undo.CapturePresetMealsAsync([copy.Id]);
+
         db.PresetMeals.Add(copy);
         await db.SaveChangesAsync();
 
@@ -70,6 +78,7 @@ public class PresetMealService(AppDbContext db)
             });
         }
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
 
         var result = await GetPresetsQuery().FirstAsync(pm => pm.Id == copy.Id);
         return ToResponse(result);
@@ -78,8 +87,12 @@ public class PresetMealService(AppDbContext db)
     public async Task DeleteAsync(Guid id, Guid userId)
     {
         var preset = await GetPresetWithOwnership(id, userId);
+
+        var before = await undo.CapturePresetMealsAsync([id]);
+
         db.PresetMeals.Remove(preset);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     public async Task<PresetMealFoodResponse> AddFoodAsync(Guid presetId, Guid userId, AddPresetMealFoodRequest request)
@@ -89,6 +102,8 @@ public class PresetMealService(AppDbContext db)
         var food = await db.Foods.FindAsync(request.FoodId);
         if (food is null)
             throw new ApiException("Alimento não encontrado", 404);
+
+        var before = await undo.CapturePresetMealsAsync([presetId]);
 
         // Upsert: (PresetMealId, FoodId) é único — repetir o alimento atualiza a quantidade
         var entry = await db.PresetMealFoods
@@ -110,6 +125,7 @@ public class PresetMealService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
 
         return new PresetMealFoodResponse(
             entry.Id,
@@ -127,6 +143,8 @@ public class PresetMealService(AppDbContext db)
             .FirstOrDefaultAsync(pmf => pmf.PresetMealId == presetId && pmf.FoodId == foodId);
         if (entry is null)
             throw new ApiException("Alimento não encontrado na refeição pronta", 404);
+
+        var before = await undo.CapturePresetMealsAsync([presetId]);
 
         if (newFoodId.HasValue && newFoodId.Value != foodId)
         {
@@ -147,12 +165,50 @@ public class PresetMealService(AppDbContext db)
             entry.Quantity = quantity.Value;
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
 
         return new PresetMealFoodResponse(
             entry.Id,
             entry.Quantity,
             new FoodResponse(entry.Food.Id, entry.Food.Name, entry.Food.Calories, entry.Food.Protein, entry.Food.Carbs, entry.Food.Fat, entry.Food.Fibers, entry.Food.Portion)
         );
+    }
+
+    /// Copia os alimentos de uma refeição pronta para outra em uma operação só. Existe como
+    /// endpoint (em vez de um laço de AddFood no cliente) para o undo reverter a cópia
+    /// inteira, e não apenas o último alimento — R5 da CHG-002.
+    public async Task CopyFoodsFromAsync(Guid targetId, Guid sourceId, Guid userId)
+    {
+        if (targetId == sourceId)
+            throw new ApiException("Origem e destino são a mesma refeição pronta", 400);
+
+        var target = await GetPresetWithOwnership(targetId, userId, includeFoods: true);
+        var source = await GetPresetWithOwnership(sourceId, userId, includeFoods: true);
+
+        if (source.Foods.Count == 0)
+            throw new ApiException("A refeição arrastada não tem alimentos para copiar", 400);
+
+        var before = await undo.CapturePresetMealsAsync([targetId]);
+
+        foreach (var item in source.Foods)
+        {
+            var existing = target.Foods.FirstOrDefault(f => f.FoodId == item.FoodId);
+            if (existing is not null)
+            {
+                existing.Quantity = item.Quantity;
+                continue;
+            }
+
+            db.PresetMealFoods.Add(new PresetMealFood
+            {
+                PresetMealId = targetId,
+                FoodId = item.FoodId,
+                Quantity = item.Quantity,
+            });
+        }
+
+        await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     public async Task RemoveFoodAsync(Guid presetId, Guid foodId, Guid userId)
@@ -164,8 +220,11 @@ public class PresetMealService(AppDbContext db)
         if (entry is null)
             throw new ApiException("Alimento não encontrado na refeição pronta", 404);
 
+        var before = await undo.CapturePresetMealsAsync([presetId]);
+
         db.PresetMealFoods.Remove(entry);
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     public async Task ApplyAsync(Guid presetId, Guid userId, List<Guid> targetMealIds)
@@ -182,6 +241,8 @@ public class PresetMealService(AppDbContext db)
 
         var items = preset.Foods.Select(pf => (pf.FoodId, pf.Quantity)).ToList();
 
+        var before = await undo.CaptureMealsAsync(targets.Select(t => t.Id));
+
         foreach (var target in targets)
         {
             target.AssertEditAccess(userId);
@@ -189,6 +250,7 @@ public class PresetMealService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
+        await undo.RecordAsync(userId, before);
     }
 
     private async Task<PresetMeal> GetPresetWithOwnership(Guid id, Guid userId, bool includeFoods = false)

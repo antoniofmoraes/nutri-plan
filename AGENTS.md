@@ -1,6 +1,6 @@
-# NutriPlan — Diretivas para Codex
+# NutriPlan — Diretivas para agentes
 
-Documento de referência que o Codex **deve ler e seguir** ao operar neste repositório. Mantenha curto, denso e atualizado conforme padrões evoluírem.
+Documento de referência que qualquer agente de código **deve ler e seguir** ao operar neste repositório. Mantenha curto, denso e atualizado conforme padrões evoluírem.
 
 ---
 

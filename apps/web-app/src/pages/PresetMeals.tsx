@@ -26,38 +26,30 @@ export default function PresetMeals() {
     addFoodToPreset,
     updateFoodInPreset,
     removeFoodFromPreset,
+    copyFoodsBetweenPresets,
     applyPreset,
   } = usePresetMeals();
   const { foods } = useAllFoods();
   const { mealPlans } = useMealPlans();
 
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
-  const [editingPreset, setEditingPreset] = useState<PresetMeal | null>(null);
   const [presetName, setPresetName] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [foodDialogPresetId, setFoodDialogPresetId] = useState<string | null>(null);
   const [applyPresetId, setApplyPresetId] = useState<string | null>(null);
 
-  const handleOpenCreate = () => {
-    setEditingPreset(null);
-    setPresetName('');
-    setNameDialogOpen(true);
-  };
+  // Derivado da lista (e não guardado em estado) para refletir rename e sumir se o preset for excluído.
+  const presetToApply = presetMeals.find((preset) => preset.id === applyPresetId) ?? null;
 
-  const handleOpenEdit = (preset: PresetMeal) => {
-    setEditingPreset(preset);
-    setPresetName(preset.name);
+  const handleOpenCreate = () => {
+    setPresetName('');
     setNameDialogOpen(true);
   };
 
   const handleSubmitName = async () => {
     if (!presetName.trim()) return;
-    if (editingPreset) {
-      await updatePresetMeal(editingPreset.id, presetName.trim());
-    } else {
-      await addPresetMeal(presetName.trim());
-    }
+    await addPresetMeal(presetName.trim());
     setNameDialogOpen(false);
   };
 
@@ -94,10 +86,8 @@ export default function PresetMeals() {
           toast.info('A refeição arrastada não tem alimentos para copiar');
           return;
         }
-        for (const { food, quantity } of source.foods) {
-          await addFoodToPreset(target.id, food, quantity);
-        }
-        toast.success(`Itens de "${source.name}" copiados para "${target.name}"`);
+        // Uma chamada só: desfazer precisa reverter a cópia inteira, não o último alimento.
+        await copyFoodsBetweenPresets(target.id, source.id);
       }
       setExpandedId(target.id);
     } catch (err) {
@@ -149,7 +139,7 @@ export default function PresetMeals() {
                 allFoods={foods}
                 onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
                 onDuplicate={() => duplicatePresetMeal(preset.id)}
-                onEdit={() => handleOpenEdit(preset)}
+                onRename={(name) => updatePresetMeal(preset.id, name)}
                 onDelete={() => setDeleteTarget(preset.id)}
                 onAddFood={() => setFoodDialogPresetId(preset.id)}
                 onRemoveFood={(foodId) => removeFoodFromPreset(preset.id, foodId)}
@@ -172,7 +162,6 @@ export default function PresetMeals() {
         onOpenChange={setNameDialogOpen}
         name={presetName}
         onNameChange={setPresetName}
-        isEditing={editingPreset !== null}
         onSubmit={handleSubmitName}
       />
 
@@ -192,8 +181,9 @@ export default function PresetMeals() {
       />
 
       <ApplyPresetDialog
-        open={applyPresetId !== null}
+        open={presetToApply !== null}
         onOpenChange={(open) => { if (!open) setApplyPresetId(null); }}
+        preset={presetToApply}
         mealPlans={mealPlans}
         onApply={handleApply}
       />

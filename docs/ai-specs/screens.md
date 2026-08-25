@@ -9,7 +9,7 @@
 
 - Sidebar fixa: `w-64`, full-height, `border-r border-line bg-paper`
 - Main: `flex-1 max-w-[1152px] mx-auto px-10 py-8 pb-20`
-- Mobile (≤900px): sidebar vira drawer, top bar `h-14` com hamburger + wordmark
+- Mobile/tablet (`<1024px`): sidebar vira drawer; a partir de `lg` ela fica fixa. Top bar `h-14` com hamburger + wordmark
 - Gap entre seções: `gap-7` (28px)
 
 ### Sidebar
@@ -108,8 +108,20 @@ h2 "Refeições de {dia}" + contagem mono + tabs card variant (`Lista | Timeline
 
 - Header: eyebrow "Templates" + h1 + descrição + CTA `acc`
 - Cards empilhados, estilo accordion
-  - Collapsed: nome + meta mono (count · kcal · P/C/G) + botões ghost (apply/edit/delete)
+  - Collapsed: nome + meta mono (count · kcal · P/C/G) + botões ghost (apply/rename/delete)
   - Expanded: body `bg-surface-alt`, rows de food (nome + macros + qty + kcal) + "Adicionar alimento" `sec`
+- Nome editável inline no cabeçalho: clicar no nome ou no botão de renomear entra no mesmo modo de edição. Ver `components.md > Edição inline`. Clicar no nome não expande/recolhe o card; o chevron e a linha de macros continuam alternando.
+- `PresetNameDialog` é usado **somente para criar** uma refeição pronta.
+
+### Diálogo de aplicar
+
+- Título fixo "Aplicar refeição pronta". A descrição nomeia a refeição pronta de origem e o efeito destrutivo na mesma frase: `Selecione as refeições da semana que vão receber “{nome}”. Os alimentos que já existirem nelas serão substituídos.`
+- A origem vive no `DialogHeader`, fora da área rolável (`DialogBody`), então continua visível enquanto a pessoa rola a seleção de refeições.
+- `DialogHeader` usa `pr-12` para não passar por baixo do botão de fechar, que é absoluto no `DialogContent`.
+- Botão primário informa o alvo: `Aplicar` (desabilitado, nada selecionado), `Aplicar em 1 refeição`, `Aplicar em N refeições` — o número em `.num`.
+- O preset é derivado da lista pelo id, não copiado para estado: renomear reflete no diálogo aberto e excluir fecha o diálogo.
+
+> Mudança planejada: [CHG-004 — revisitar o fluxo de aplicar](changes/004-rework-apply-preset-flow.md).
 
 ---
 

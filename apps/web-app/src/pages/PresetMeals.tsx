@@ -36,13 +36,23 @@ export default function PresetMeals() {
   const navigate = useNavigate();
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [presetName, setPresetName] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [foodDialogPresetId, setFoodDialogPresetId] = useState<string | null>(null);
   const [applyPresetId, setApplyPresetId] = useState<string | null>(null);
 
   // Derivado da lista (e não guardado em estado) para refletir rename e sumir se o preset for excluído.
   const presetToApply = presetMeals.find((preset) => preset.id === applyPresetId) ?? null;
+
+  const setExpanded = (id: string, expanded: boolean) => {
+    setExpandedIds((prev) => {
+      if (prev.has(id) === expanded) return prev;
+      const next = new Set(prev);
+      if (expanded) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
 
   const handleOpenCreate = () => {
     setPresetName('');
@@ -59,7 +69,7 @@ export default function PresetMeals() {
     if (deleteTarget) {
       await deletePresetMeal(deleteTarget);
       setDeleteTarget(null);
-      if (expandedId === deleteTarget) setExpandedId(null);
+      setExpanded(deleteTarget, false);
     }
   };
 
@@ -92,7 +102,7 @@ export default function PresetMeals() {
         // Uma chamada só: desfazer precisa reverter a cópia inteira, não o último alimento.
         await copyFoodsBetweenPresets(target.id, source.id);
       }
-      setExpandedId(target.id);
+      setExpanded(target.id, true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao adicionar itens');
     }
@@ -137,10 +147,10 @@ export default function PresetMeals() {
               <PresetCard
                 key={preset.id}
                 preset={preset}
-                isExpanded={expandedId === preset.id}
+                isExpanded={expandedIds.has(preset.id)}
                 canApply={mealPlans.length > 0}
                 allFoods={foods}
-                onToggleExpand={() => setExpandedId(expandedId === preset.id ? null : preset.id)}
+                onToggleExpand={() => setExpanded(preset.id, !expandedIds.has(preset.id))}
                 onDuplicate={() => duplicatePresetMeal(preset.id)}
                 onRename={(name) => updatePresetMeal(preset.id, name)}
                 onDelete={() => setDeleteTarget(preset.id)}
